@@ -65,7 +65,7 @@
   .scan-counter-pill { background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); border-radius:100px; padding:8px 18px; font-size:13px; font-weight:600; }
   .scan-counter-pill span { font-family:'DM Mono',monospace; font-size:16px; }
 
-  /* Wider viewfinder for 1D barcodes */
+  /* Wide viewfinder for 1D barcodes */
   .viewfinder { width:300px; height:100px; position:relative; flex-shrink:0; }
   .viewfinder::before,.viewfinder::after,.vf-br::before,.vf-br::after { content:''; position:absolute; width:24px; height:24px; border-color:#fff; border-style:solid; }
   .viewfinder::before { top:0; left:0; border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
@@ -74,12 +74,12 @@
   .vf-br::after  { bottom:0; right:0; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
   .scan-line { position:absolute; top:50%; left:4px; right:4px; height:2px; transform:translateY(-50%); background:linear-gradient(90deg,transparent,var(--accent),transparent); animation:pulse 1.5s ease-in-out infinite; }
   .scan-line.rto { background:linear-gradient(90deg,transparent,var(--accent2),transparent); }
-  @keyframes pulse { 0%,100% { opacity:0.4; } 50% { opacity:1; } }
+  @keyframes pulse { 0%,100%{opacity:0.3;} 50%{opacity:1;} }
 
   .scanner-bottom { pointer-events:all; width:100%; display:flex; flex-direction:column; align-items:center; gap:12px; }
   .scanner-hint { color:rgba(255,255,255,0.5); font-size:12px; text-align:center; line-height:1.5; }
   .last-scan-pill { background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); border-radius:10px; padding:10px 16px; font-size:14px; min-height:40px; display:flex; align-items:center; gap:10px; max-width:320px; width:100%; justify-content:center; }
-  .last-scan-pill .scan-num { font-family:'DM Mono',monospace; font-weight:600; font-size:15px; }
+  .scan-num { font-family:'DM Mono',monospace; font-weight:600; font-size:15px; }
   .pay-badge { font-size:11px; padding:3px 10px; border-radius:100px; font-weight:600; }
   .pay-badge.cod { background:rgba(240,192,64,0.2); color:var(--accent); }
   .pay-badge.prepaid { background:rgba(64,192,112,0.2); color:var(--green); }
@@ -87,10 +87,13 @@
   .done-btn { width:100%; max-width:320px; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.15); color:#fff; font-family:'DM Sans',sans-serif; font-size:16px; font-weight:600; padding:16px; border-radius:var(--radius); cursor:pointer; }
   .done-btn:active { background:rgba(255,255,255,0.12); }
 
+  /* engine badge */
+  .engine-badge { position:absolute; bottom:8px; right:12px; font-size:10px; color:rgba(255,255,255,0.25); pointer-events:none; }
+
   .modal-backdrop { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); backdrop-filter:blur(4px); z-index:100; align-items:flex-end; justify-content:center; padding:0 0 24px; }
   .modal-backdrop.open { display:flex; }
   .modal { background:var(--surface); border:1px solid var(--border); border-radius:20px 20px 16px 16px; width:100%; max-width:420px; padding:28px 24px 24px; animation:slideUp 0.25s ease; display:flex; flex-direction:column; max-height:82vh; }
-  @keyframes slideUp { from { transform:translateY(40px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+  @keyframes slideUp { from{transform:translateY(40px);opacity:0;} to{transform:translateY(0);opacity:1;} }
   .modal-title { font-size:18px; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:10px; flex-shrink:0; }
   .modal-title .dot { width:10px; height:10px; border-radius:50%; background:var(--accent); flex-shrink:0; }
   .modal-title .dot.rto { background:var(--accent2); }
@@ -167,6 +170,7 @@
       <button class="done-btn" onclick="stopScanner()">Done</button>
     </div>
   </div>
+  <div class="engine-badge" id="engine-badge"></div>
 </div>
 
 <div class="modal-backdrop" id="report-modal">
@@ -189,7 +193,7 @@
 
 <div class="toast" id="toast"></div>
 
-<!-- jsQR for QR codes — confirmed working on cdnjs -->
+<!-- jsQR — fallback for devices without BarcodeDetector -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js"></script>
 
 <script>
@@ -198,10 +202,9 @@
 // ============================================================
 const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbyJvs63tDwTSc3P3ub37ZsZRDgOIYDodkR3pN5UkWjLbTWlvZtJ6W8a2JT1AvvxDIYj/exec';
 
-// DISPATCH: scan Order ID barcode — purely numeric, 3-6 digits
+// Dispatch: 3-6 digit numeric order numbers
 const ORDER_NUM_REGEX = /^\d{3,6}$/;
-
-// RTO: scan AWB barcode — numeric, 10-25 digits
+// RTO: 10-25 digit AWB numbers
 const AWB_REGEX = /^\d{10,25}$/;
 
 const SCAN_DEBOUNCE_MS = 2000;
@@ -217,13 +220,38 @@ let scanSession = [];
 let scanActive  = false;
 let videoStream = null;
 let scanRAF     = null;
+let barcodeDetector = null;
+let useNativeDetector = false;
 let ding = null, errorSnd = null;
 let lastRaw = '', lastRawTime = 0;
 
 // ============================================================
 // INIT
 // ============================================================
-window.addEventListener('load', () => { buildSounds(); init(); });
+window.addEventListener('load', () => {
+  buildSounds();
+  initBarcodeEngine();
+  init();
+});
+
+function initBarcodeEngine() {
+  // BarcodeDetector is native in Android Chrome 83+ — fastest, most reliable
+  if ('BarcodeDetector' in window) {
+    try {
+      barcodeDetector = new BarcodeDetector({
+        formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'qr_code', 'data_matrix']
+      });
+      useNativeDetector = true;
+      console.log('Using native BarcodeDetector');
+    } catch(e) {
+      console.log('BarcodeDetector init failed, using jsQR fallback:', e);
+      useNativeDetector = false;
+    }
+  } else {
+    console.log('BarcodeDetector not available, using jsQR fallback');
+    useNativeDetector = false;
+  }
+}
 
 async function init() {
   showScreen('loading');
@@ -243,7 +271,10 @@ async function init() {
 
 function getDeviceId() {
   let id = localStorage.getItem('kaidoo_device_id');
-  if (!id) { id = 'kd-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8); localStorage.setItem('kaidoo_device_id', id); }
+  if (!id) {
+    id = 'kd-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8);
+    localStorage.setItem('kaidoo_device_id', id);
+  }
   return id;
 }
 
@@ -266,14 +297,18 @@ function buildHomeGrid() {
     el.addEventListener('click', () => startScanner(b.id));
     grid.appendChild(el);
   });
-  if (!grid.children.length) grid.innerHTML = '<div style="grid-column:1/-1;color:var(--text2);font-size:14px;text-align:center;padding:40px 0">No operations assigned.<br>Contact your admin.</div>';
+  if (!grid.children.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;color:var(--text2);font-size:14px;text-align:center;padding:40px 0">No operations assigned.<br>Contact your admin.</div>';
+  }
 }
 
 // ============================================================
-// SCANNER — uses jsQR + inline Code128 decoder
+// SCANNER
 // ============================================================
 async function startScanner(mode) {
-  currentMode = mode; scanSession = []; lastRaw = '';
+  currentMode = mode;
+  scanSession = [];
+  lastRaw = '';
   document.getElementById('scan-count').textContent = '0';
   document.getElementById('last-scan-pill').innerHTML = '<span style="color:var(--text2);font-size:13px">Ready to scan</span>';
 
@@ -281,30 +316,63 @@ async function startScanner(mode) {
   pill.textContent = mode === 'dispatch' ? 'DISPATCH' : 'RTO';
   pill.className   = 'scanner-mode-pill ' + mode;
   document.getElementById('scan-line').className = 'scan-line ' + mode;
-
-  // Update hint based on mode
   document.getElementById('scanner-hint').textContent = mode === 'dispatch'
     ? 'Point at the Order Id barcode (bottom barcode)'
     : 'Point at the AWB barcode (top barcode)';
+  document.getElementById('engine-badge').textContent = useNativeDetector ? 'native' : 'jsQR';
 
   showScreen('scanner');
 
   try {
     videoStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode:'environment', width:{ideal:1280}, height:{ideal:720} }
+      video: {
+        facingMode: 'environment',
+        width:  { ideal: 1280 },
+        height: { ideal: 720 }
+      }
     });
     const video = document.getElementById('video');
     video.srcObject = videoStream;
     await video.play();
     scanActive = true;
-    requestAnimationFrame(scanFrame);
+
+    if (useNativeDetector) {
+      // Native BarcodeDetector — runs directly on video frames
+      nativeScanLoop();
+    } else {
+      // jsQR fallback — canvas-based
+      requestAnimationFrame(jsqrScanFrame);
+    }
   } catch(err) {
     showToast('Camera error: ' + err.message);
     showScreen('home');
   }
 }
 
-function scanFrame() {
+// ---- NATIVE BARCODE DETECTOR LOOP ----
+async function nativeScanLoop() {
+  const video = document.getElementById('video');
+  while (scanActive) {
+    try {
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        const barcodes = await barcodeDetector.detect(video);
+        for (const barcode of barcodes) {
+          if (barcode.rawValue) {
+            handleRawScan(barcode.rawValue);
+            break; // only process first barcode per frame
+          }
+        }
+      }
+    } catch(e) {
+      // Detection error — just continue
+    }
+    // Small yield to avoid blocking UI
+    await new Promise(r => setTimeout(r, 100));
+  }
+}
+
+// ---- JSQR CANVAS FALLBACK LOOP ----
+function jsqrScanFrame() {
   if (!scanActive) return;
   const video  = document.getElementById('video');
   const canvas = document.getElementById('canvas');
@@ -315,18 +383,10 @@ function scanFrame() {
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-    // Try jsQR first (QR codes)
     const qr = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
-    if (qr && qr.data) {
-      handleRawScan(qr.data);
-    } else {
-      // Try Code128 1D barcode decoder
-      const barcode = decodeCode128(imageData);
-      if (barcode) handleRawScan(barcode);
-    }
+    if (qr && qr.data) handleRawScan(qr.data);
   }
-  scanRAF = requestAnimationFrame(scanFrame);
+  scanRAF = requestAnimationFrame(jsqrScanFrame);
 }
 
 // ============================================================
@@ -341,21 +401,18 @@ function handleRawScan(raw) {
   const trimmed = raw.trim();
 
   if (currentMode === 'dispatch') {
-    // Dispatch: expect 3-6 digit order number
-    if (!ORDER_NUM_REGEX.test(trimmed)) return; // silent skip — AWB or other
+    if (!ORDER_NUM_REGEX.test(trimmed)) return; // not an order number
     if (scanSession.find(s => s.scanValue === trimmed)) return; // duplicate
     processScan(trimmed);
-
   } else if (currentMode === 'rto') {
-    // RTO: expect 10-25 digit AWB number
-    if (!AWB_REGEX.test(trimmed)) return; // silent skip — not an AWB
+    if (!AWB_REGEX.test(trimmed)) return; // not an AWB
     if (scanSession.find(s => s.scanValue === trimmed)) return; // duplicate
     processScan(trimmed);
   }
 }
 
 // ============================================================
-// PROCESS SCAN — calls backend
+// PROCESS SCAN
 // ============================================================
 async function processScan(scanValue) {
   const entry = { scanValue, paymentType:'...', status:'pending', error:null };
@@ -363,7 +420,6 @@ async function processScan(scanValue) {
   document.getElementById('scan-count').textContent = scanSession.length;
   const today = getTodayTag();
 
-  // Build params — dispatch sends orderNum, rto sends awb
   const params = { action:'scanOrder', mode:currentMode, date:today };
   if (currentMode === 'dispatch') params.orderNum = scanValue;
   else                            params.awb       = scanValue;
@@ -446,185 +502,7 @@ function closeReport() {
 }
 
 // ============================================================
-// CODE 128 DECODER
-// Scans horizontal rows of the image for Code 128 barcodes
-// ============================================================
-function decodeCode128(imageData) {
-  const { data, width, height } = imageData;
-
-  // Sample multiple horizontal rows across the middle third of the image
-  const rows = [];
-  for (let r = Math.floor(height * 0.3); r <= Math.floor(height * 0.7); r += 4) {
-    rows.push(r);
-  }
-
-  for (const row of rows) {
-    const result = decodeCode128Row(data, width, row);
-    if (result) return result;
-  }
-  return null;
-}
-
-function decodeCode128Row(data, width, row) {
-  // Convert row to grayscale + binarize with adaptive threshold
-  const gray = new Uint8Array(width);
-  for (let x = 0; x < width; x++) {
-    const i = (row * width + x) * 4;
-    gray[x] = (data[i] * 77 + data[i+1] * 150 + data[i+2] * 29) >> 8;
-  }
-
-  // Adaptive threshold — use local average
-  const threshold = gray.reduce((a, b) => a + b, 0) / width;
-  const binary = new Uint8Array(width);
-  for (let x = 0; x < width; x++) binary[x] = gray[x] < threshold ? 1 : 0;
-
-  // Find runs of black/white
-  const runs = [];
-  let current = binary[0], count = 1;
-  for (let x = 1; x < width; x++) {
-    if (binary[x] === current) { count++; }
-    else { runs.push({ val: current, len: count }); current = binary[x]; count = 1; }
-  }
-  runs.push({ val: current, len: count });
-
-  // Need at least the start pattern + some data + stop
-  if (runs.length < 10) return null;
-
-  // Find the quiet zone + start pattern
-  // Code 128 start patterns: 211412, 211214, 211232 (ratio-based)
-  // We look for 6-bar sequences with specific ratios
-  for (let i = 0; i < runs.length - 30; i++) {
-    // Must start with a black bar
-    if (runs[i].val !== 1) continue;
-
-    const unit = detectCode128Start(runs, i);
-    if (!unit) continue;
-
-    // Decode bars from start
-    const decoded = extractCode128Bars(runs, i, unit);
-    if (decoded && /^\d+$/.test(decoded) && decoded.length >= 6) {
-      return decoded;
-    }
-  }
-  return null;
-}
-
-function detectCode128Start(runs, i) {
-  // Check if we have enough runs
-  if (i + 6 >= runs.length) return null;
-
-  // Get 6 bars for start pattern
-  const bars = runs.slice(i, i + 6).map(r => r.len);
-  const total = bars.reduce((a,b) => a+b, 0);
-  if (total < 12) return null; // too thin to be a barcode
-
-  const unit = total / 11; // code128 start = 11 units wide
-  if (unit < 1) return null;
-
-  return unit;
-}
-
-function extractCode128Bars(runs, startIdx, unit) {
-  try {
-    // Skip start pattern (6 bars = indices startIdx to startIdx+5)
-    let idx = startIdx + 6;
-    const chars = [];
-    let codeSet = null;
-
-    // Detect which start code (A, B, or C)
-    const startBars = runs.slice(startIdx, startIdx + 6).map(r => Math.round(r.len / unit));
-    const startVal  = barsToCode128Value(startBars);
-    if (startVal === 103)      codeSet = 'A';
-    else if (startVal === 104) codeSet = 'B';
-    else if (startVal === 105) codeSet = 'C';
-    else return null;
-
-    // Decode data bars (each char = 3 bars black + 3 bars white = 6 bars)
-    while (idx + 6 < runs.length) {
-      const barGroup = runs.slice(idx, idx + 6);
-      if (barGroup.length < 6) break;
-
-      const widths = barGroup.map(r => Math.max(1, Math.round(r.len / unit)));
-      const value  = barsToCode128Value(widths);
-
-      // Stop character check (value 106)
-      if (value === 106) break;
-      // Invalid value
-      if (value === null || value > 106) break;
-
-      // Code C encodes two digits per symbol
-      if (codeSet === 'C') {
-        if (value < 100) chars.push(value.toString().padStart(2, '0'));
-        else if (value === 100) codeSet = 'B';
-        else if (value === 101) codeSet = 'A';
-      } else {
-        // Code B: values 0-95 map to ASCII 32-127
-        if (value < 96) {
-          chars.push(String.fromCharCode(value + 32));
-        } else if (value === 99) {
-          codeSet = 'C';
-        } else if (value === 100) {
-          codeSet = 'B';
-        } else if (value === 101) {
-          codeSet = 'A';
-        }
-      }
-      idx += 6;
-    }
-
-    if (chars.length === 0) return null;
-    return chars.join('');
-  } catch(e) {
-    return null;
-  }
-}
-
-// Convert 6 bar widths to Code 128 symbol value
-// Code 128 uses patterns of 6 bars (3 black, 3 white) summing to 11 units
-function barsToCode128Value(widths) {
-  if (widths.length !== 6) return null;
-  const sum = widths.reduce((a,b) => a+b, 0);
-  if (sum < 8 || sum > 14) return null; // allow some tolerance
-
-  // Encode as string key and look up in table
-  const key = widths.join('');
-  return CODE128_TABLE[key] !== undefined ? CODE128_TABLE[key] : null;
-}
-
-// Code 128 lookup table: bar pattern → value
-// Each entry: 6 bar widths (3 black + 3 white alternating) → symbol value 0-106
-const CODE128_TABLE = (function() {
-  const patterns = [
-    [2,1,2,2,2,2],[2,2,2,1,2,2],[2,2,2,2,2,1],[1,2,1,2,2,3],[1,2,1,3,2,2],
-    [1,3,1,2,2,2],[1,2,2,2,1,3],[1,2,2,3,1,2],[1,3,2,2,1,2],[2,2,1,2,1,3],
-    [2,2,1,3,1,2],[2,3,1,2,1,2],[1,1,2,2,3,2],[1,2,2,1,3,2],[1,2,2,2,3,1],
-    [1,1,3,2,2,2],[1,2,3,1,2,2],[1,2,3,2,2,1],[2,2,3,2,1,1],[2,2,1,1,3,2],
-    [2,2,1,2,3,1],[2,1,3,2,1,2],[2,2,3,1,1,2],[3,1,2,1,3,1],[3,1,1,2,2,2],
-    [3,2,1,1,2,2],[3,2,1,2,2,1],[3,1,2,2,1,2],[3,2,2,1,1,2],[3,2,2,2,1,1],
-    [2,1,2,1,2,3],[2,1,2,3,2,1],[2,3,2,1,2,1],[1,1,1,3,2,3],[1,3,1,1,2,3],
-    [1,3,1,3,2,1],[1,1,2,3,1,3],[1,3,2,1,1,3],[1,3,2,3,1,1],[2,1,1,3,1,3],
-    [2,3,1,1,1,3],[2,3,1,3,1,1],[1,1,2,1,3,3],[1,1,2,3,3,1],[1,3,2,1,3,1],
-    [1,1,3,1,2,3],[1,1,3,3,2,1],[1,3,3,1,2,1],[3,1,3,1,2,1],[2,1,1,3,3,1],
-    [2,3,1,1,3,1],[2,1,3,1,1,3],[2,1,3,3,1,1],[2,1,3,1,3,1],[3,1,1,1,2,3],
-    [3,1,1,3,2,1],[3,3,1,1,2,1],[3,1,2,1,1,3],[3,1,2,3,1,1],[3,3,2,1,1,1],
-    [3,1,4,1,1,1],[2,2,1,4,1,1],[4,3,1,1,1,1],[1,1,1,2,2,4],[1,1,1,4,2,2],
-    [1,2,1,1,2,4],[1,2,1,4,2,1],[1,4,1,1,2,2],[1,4,1,2,2,1],[1,1,2,2,1,4],
-    [1,1,2,4,1,2],[1,2,2,1,1,4],[1,2,2,4,1,1],[1,4,2,1,1,2],[1,4,2,2,1,1],
-    [2,4,1,2,1,1],[2,2,1,1,1,4],[4,1,3,1,1,1],[2,4,1,1,1,2],[1,3,4,1,1,1],
-    [1,1,1,2,4,2],[1,2,1,1,4,2],[1,2,1,2,4,1],[1,1,4,2,1,2],[1,2,4,1,1,2],
-    [1,2,4,2,1,1],[4,1,1,2,1,2],[4,2,1,1,1,2],[4,2,1,2,1,1],[2,1,2,1,4,1],
-    [2,1,4,1,2,1],[4,1,2,1,2,1],[1,1,1,1,4,3],[1,1,1,3,4,1],[1,3,1,1,4,1],
-    [1,1,4,1,1,3],[1,1,4,3,1,1],[4,1,1,1,1,3],[4,1,1,3,1,1],[1,1,3,1,4,1],
-    [1,1,4,1,3,1],[3,1,1,1,4,1],[4,1,1,1,3,1],[2,1,1,4,1,2],[2,1,1,2,1,4],
-    [2,1,1,2,3,2],[2,3,3,1,1,1]
-  ];
-  const table = {};
-  patterns.forEach((p, i) => { table[p.join('')] = i; });
-  return table;
-})();
-
-// ============================================================
-// HELPERS
+// UTILITIES
 // ============================================================
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
