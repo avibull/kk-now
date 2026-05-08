@@ -65,7 +65,6 @@
   .scan-counter-pill { background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); border-radius:100px; padding:8px 18px; font-size:13px; font-weight:600; }
   .scan-counter-pill span { font-family:'DM Mono',monospace; font-size:16px; }
 
-  /* Wide viewfinder for 1D barcodes */
   .viewfinder { width:300px; height:100px; position:relative; flex-shrink:0; }
   .viewfinder::before,.viewfinder::after,.vf-br::before,.vf-br::after { content:''; position:absolute; width:24px; height:24px; border-color:#fff; border-style:solid; }
   .viewfinder::before { top:0; left:0; border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
@@ -76,7 +75,7 @@
   .scan-line.rto { background:linear-gradient(90deg,transparent,var(--accent2),transparent); }
   @keyframes pulse { 0%,100%{opacity:0.3;} 50%{opacity:1;} }
 
-  .scanner-bottom { pointer-events:all; width:100%; display:flex; flex-direction:column; align-items:center; gap:12px; }
+  .scanner-bottom { pointer-events:all; width:100%; display:flex; flex-direction:column; align-items:center; gap:10px; }
   .scanner-hint { color:rgba(255,255,255,0.5); font-size:12px; text-align:center; line-height:1.5; }
   .last-scan-pill { background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); border-radius:10px; padding:10px 16px; font-size:14px; min-height:40px; display:flex; align-items:center; gap:10px; max-width:320px; width:100%; justify-content:center; }
   .scan-num { font-family:'DM Mono',monospace; font-weight:600; font-size:15px; }
@@ -86,9 +85,7 @@
   .pay-badge.error { background:rgba(224,64,64,0.2); color:var(--red); }
   .done-btn { width:100%; max-width:320px; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.15); color:#fff; font-family:'DM Sans',sans-serif; font-size:16px; font-weight:600; padding:16px; border-radius:var(--radius); cursor:pointer; }
   .done-btn:active { background:rgba(255,255,255,0.12); }
-
-  /* engine badge */
-  .engine-badge { position:absolute; bottom:8px; right:12px; font-size:10px; color:rgba(255,255,255,0.25); pointer-events:none; }
+  .engine-badge { position:absolute; top:8px; left:50%; transform:translateX(-50%); font-size:10px; color:rgba(255,255,255,0.3); pointer-events:none; font-family:monospace; }
 
   .modal-backdrop { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); backdrop-filter:blur(4px); z-index:100; align-items:flex-end; justify-content:center; padding:0 0 24px; }
   .modal-backdrop.open { display:flex; }
@@ -112,7 +109,6 @@
   .modal-ok-btn { width:100%; background:var(--accent); color:#000; font-family:'DM Sans',sans-serif; font-size:16px; font-weight:700; padding:16px; border-radius:12px; border:none; cursor:pointer; flex-shrink:0; }
   .modal-ok-btn:active { opacity:0.8; }
   .modal-ok-btn.rto { background:var(--accent2); color:#fff; }
-
   .toast { position:fixed; bottom:32px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:10px 20px; border-radius:100px; font-size:13px; opacity:0; transition:all 0.2s; z-index:200; white-space:nowrap; pointer-events:none; }
   .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 </style>
@@ -122,7 +118,7 @@
 <div id="screen-loading" class="screen active">
   <div class="logo">Kaidoo <span>Scanner</span></div>
   <div class="spinner"></div>
-  <div class="loading-text">Checking device...</div>
+  <div class="loading-text" id="loading-text">Checking device...</div>
 </div>
 
 <div id="screen-waiting" class="screen">
@@ -153,6 +149,7 @@
   <video id="video" playsinline autoplay muted></video>
   <canvas id="canvas"></canvas>
   <div class="flash-overlay" id="flash-overlay"></div>
+  <div class="engine-badge" id="engine-badge"></div>
   <div class="scanner-overlay">
     <div class="scanner-top">
       <div class="scanner-mode-pill" id="scanner-mode-pill">DISPATCH</div>
@@ -163,14 +160,13 @@
       <div class="scan-line" id="scan-line"></div>
     </div>
     <div class="scanner-bottom">
-      <div class="scanner-hint" id="scanner-hint">Point at the Order Id barcode (bottom barcode)</div>
+      <div class="scanner-hint" id="scanner-hint">Point at the Order Id barcode</div>
       <div class="last-scan-pill" id="last-scan-pill">
         <span style="color:var(--text2);font-size:13px">Ready to scan</span>
       </div>
       <button class="done-btn" onclick="stopScanner()">Done</button>
     </div>
   </div>
-  <div class="engine-badge" id="engine-badge"></div>
 </div>
 
 <div class="modal-backdrop" id="report-modal">
@@ -193,20 +189,13 @@
 
 <div class="toast" id="toast"></div>
 
-<!-- jsQR — fallback for devices without BarcodeDetector -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js"></script>
-
 <script>
 // ============================================================
 // CONFIG
 // ============================================================
 const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbyJvs63tDwTSc3P3ub37ZsZRDgOIYDodkR3pN5UkWjLbTWlvZtJ6W8a2JT1AvvxDIYj/exec';
-
-// Dispatch: 3-6 digit numeric order numbers
 const ORDER_NUM_REGEX = /^\d{3,6}$/;
-// RTO: 10-25 digit AWB numbers
-const AWB_REGEX = /^\d{10,25}$/;
-
+const AWB_REGEX       = /^\d{10,25}$/;
 const SCAN_DEBOUNCE_MS = 2000;
 
 // ============================================================
@@ -220,38 +209,77 @@ let scanSession = [];
 let scanActive  = false;
 let videoStream = null;
 let scanRAF     = null;
-let barcodeDetector = null;
-let useNativeDetector = false;
+let engineName  = 'loading';
 let ding = null, errorSnd = null;
 let lastRaw = '', lastRawTime = 0;
+
+// ZXing reader instance
+let zxingReader = null;
+
+// ============================================================
+// LOAD ZXING DYNAMICALLY — unpkg is most reliable
+// Falls back to BarcodeDetector if ZXing fails to load
+// ============================================================
+function loadZxing() {
+  return new Promise((resolve) => {
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js';
+    script.onload = () => {
+      try {
+        zxingReader = new ZXing.BrowserMultiFormatReader();
+        engineName = 'ZXing';
+        console.log('ZXing loaded successfully');
+        resolve('zxing');
+      } catch(e) {
+        console.log('ZXing loaded but init failed:', e);
+        resolve('fallback');
+      }
+    };
+    script.onerror = () => {
+      console.log('ZXing failed to load, will use fallback');
+      resolve('fallback');
+    };
+    // Timeout after 5 seconds
+    setTimeout(() => resolve('fallback'), 5000);
+    document.head.appendChild(script);
+  });
+}
+
+function loadJsQR() {
+  return new Promise((resolve) => {
+    if (typeof jsQR !== 'undefined') { resolve(); return; }
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js';
+    script.onload = () => resolve();
+    script.onerror = () => resolve(); // continue even if fails
+    document.head.appendChild(script);
+  });
+}
 
 // ============================================================
 // INIT
 // ============================================================
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
   buildSounds();
-  initBarcodeEngine();
+
+  // Load ZXing first, fall back to BarcodeDetector or jsQR
+  document.getElementById('loading-text').textContent = 'Loading scanner...';
+  const zxingResult = await loadZxing();
+
+  if (zxingResult === 'fallback') {
+    if ('BarcodeDetector' in window) {
+      engineName = 'native';
+      console.log('Using native BarcodeDetector');
+    } else {
+      await loadJsQR();
+      engineName = 'jsQR';
+      console.log('Using jsQR fallback');
+    }
+  }
+
+  document.getElementById('loading-text').textContent = 'Checking device...';
   init();
 });
-
-function initBarcodeEngine() {
-  // BarcodeDetector is native in Android Chrome 83+ — fastest, most reliable
-  if ('BarcodeDetector' in window) {
-    try {
-      barcodeDetector = new BarcodeDetector({
-        formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'qr_code', 'data_matrix']
-      });
-      useNativeDetector = true;
-      console.log('Using native BarcodeDetector');
-    } catch(e) {
-      console.log('BarcodeDetector init failed, using jsQR fallback:', e);
-      useNativeDetector = false;
-    }
-  } else {
-    console.log('BarcodeDetector not available, using jsQR fallback');
-    useNativeDetector = false;
-  }
-}
 
 async function init() {
   showScreen('loading');
@@ -266,7 +294,10 @@ async function init() {
     permissions = res.permissions || { dispatch: false, rto: false };
     buildHomeGrid();
     showScreen('home');
-  } catch(err) { showToast('Connection error — retrying...'); setTimeout(init, 3000); }
+  } catch(err) {
+    showToast('Connection error — retrying...');
+    setTimeout(init, 3000);
+  }
 }
 
 function getDeviceId() {
@@ -303,12 +334,12 @@ function buildHomeGrid() {
 }
 
 // ============================================================
-// SCANNER
+// START SCANNER
 // ============================================================
 async function startScanner(mode) {
   currentMode = mode;
   scanSession = [];
-  lastRaw = '';
+  lastRaw     = '';
   document.getElementById('scan-count').textContent = '0';
   document.getElementById('last-scan-pill').innerHTML = '<span style="color:var(--text2);font-size:13px">Ready to scan</span>';
 
@@ -319,29 +350,25 @@ async function startScanner(mode) {
   document.getElementById('scanner-hint').textContent = mode === 'dispatch'
     ? 'Point at the Order Id barcode (bottom barcode)'
     : 'Point at the AWB barcode (top barcode)';
-  document.getElementById('engine-badge').textContent = useNativeDetector ? 'native' : 'jsQR';
+  document.getElementById('engine-badge').textContent = engineName;
 
   showScreen('scanner');
 
   try {
     videoStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: 'environment',
-        width:  { ideal: 1280 },
-        height: { ideal: 720 }
-      }
+      video: { facingMode:'environment', width:{ideal:1920}, height:{ideal:1080} }
     });
     const video = document.getElementById('video');
     video.srcObject = videoStream;
     await video.play();
     scanActive = true;
 
-    if (useNativeDetector) {
-      // Native BarcodeDetector — runs directly on video frames
-      nativeScanLoop();
+    if (engineName === 'ZXing' && zxingReader) {
+      startZxing(video);
+    } else if (engineName === 'native') {
+      startNative(video);
     } else {
-      // jsQR fallback — canvas-based
-      requestAnimationFrame(jsqrScanFrame);
+      startJsQR();
     }
   } catch(err) {
     showToast('Camera error: ' + err.message);
@@ -349,44 +376,67 @@ async function startScanner(mode) {
   }
 }
 
-// ---- NATIVE BARCODE DETECTOR LOOP ----
-async function nativeScanLoop() {
-  const video = document.getElementById('video');
+// ---- ZXING ENGINE ----
+function startZxing(video) {
+  // ZXing decodeFromVideoElement calls our callback on every decode
+  zxingReader.decodeFromVideoElement(video, (result, err) => {
+    if (!scanActive) return;
+    if (result) {
+      handleRawScan(result.getText());
+    }
+    // err is normal when no barcode in frame — ignore
+  });
+}
+
+// ---- NATIVE BARCODEDECTOR ENGINE ----
+async function startNative(video) {
+  let detector;
+  try {
+    detector = new BarcodeDetector({
+      formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'qr_code']
+    });
+  } catch(e) {
+    // Fall back to jsQR if BarcodeDetector init fails
+    engineName = 'jsQR';
+    document.getElementById('engine-badge').textContent = engineName;
+    await loadJsQR();
+    startJsQR();
+    return;
+  }
+
   while (scanActive) {
     try {
       if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        const barcodes = await barcodeDetector.detect(video);
-        for (const barcode of barcodes) {
-          if (barcode.rawValue) {
-            handleRawScan(barcode.rawValue);
-            break; // only process first barcode per frame
-          }
+        const barcodes = await detector.detect(video);
+        for (const b of barcodes) {
+          if (b.rawValue) { handleRawScan(b.rawValue); break; }
         }
       }
-    } catch(e) {
-      // Detection error — just continue
-    }
-    // Small yield to avoid blocking UI
-    await new Promise(r => setTimeout(r, 100));
+    } catch(e) { /* continue */ }
+    await new Promise(r => setTimeout(r, 80));
   }
 }
 
-// ---- JSQR CANVAS FALLBACK LOOP ----
-function jsqrScanFrame() {
-  if (!scanActive) return;
-  const video  = document.getElementById('video');
-  const canvas = document.getElementById('canvas');
-
-  if (video.readyState === video.HAVE_ENOUGH_DATA) {
-    canvas.width  = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const qr = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
-    if (qr && qr.data) handleRawScan(qr.data);
+// ---- JSQR ENGINE (QR only fallback) ----
+function startJsQR() {
+  function frame() {
+    if (!scanActive) return;
+    const video  = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvas.width  = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d', { willReadFrequently:true });
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      if (typeof jsQR !== 'undefined') {
+        const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const qr  = jsQR(img.data, img.width, img.height, { inversionAttempts:'dontInvert' });
+        if (qr && qr.data) handleRawScan(qr.data);
+      }
+    }
+    scanRAF = requestAnimationFrame(frame);
   }
-  scanRAF = requestAnimationFrame(jsqrScanFrame);
+  scanRAF = requestAnimationFrame(frame);
 }
 
 // ============================================================
@@ -401,12 +451,12 @@ function handleRawScan(raw) {
   const trimmed = raw.trim();
 
   if (currentMode === 'dispatch') {
-    if (!ORDER_NUM_REGEX.test(trimmed)) return; // not an order number
-    if (scanSession.find(s => s.scanValue === trimmed)) return; // duplicate
+    if (!ORDER_NUM_REGEX.test(trimmed)) return;
+    if (scanSession.find(s => s.scanValue === trimmed)) return;
     processScan(trimmed);
   } else if (currentMode === 'rto') {
-    if (!AWB_REGEX.test(trimmed)) return; // not an AWB
-    if (scanSession.find(s => s.scanValue === trimmed)) return; // duplicate
+    if (!AWB_REGEX.test(trimmed)) return;
+    if (scanSession.find(s => s.scanValue === trimmed)) return;
     processScan(trimmed);
   }
 }
@@ -457,6 +507,7 @@ function showLastScan(val, paymentType, errMsg) {
 // ============================================================
 function stopScanner() {
   scanActive = false;
+  if (zxingReader) { try { zxingReader.reset(); } catch(e){} }
   if (scanRAF) { cancelAnimationFrame(scanRAF); scanRAF = null; }
   if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
   setTimeout(showReport, 400);
