@@ -8,7 +8,7 @@
 <title>Kaidoo Scanner</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap');
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
   :root {
     --bg:#0f0f0f; --surface:#1a1a1a; --surface2:#242424; --border:#2e2e2e;
     --accent:#f0c040; --accent2:#e87040; --text:#f0f0f0; --text2:#888;
@@ -18,7 +18,6 @@
   .screen { display:none; flex-direction:column; height:100vh; height:100dvh; width:100%; }
   .screen.active { display:flex; }
 
-  /* LOADING */
   #screen-loading { align-items:center; justify-content:center; gap:20px; }
   .logo { font-size:28px; font-weight:700; letter-spacing:-0.5px; }
   .logo span { color:var(--accent); }
@@ -26,7 +25,6 @@
   @keyframes spin { to { transform:rotate(360deg); } }
   .loading-text { color:var(--text2); font-size:14px; }
 
-  /* WAITING / BLOCKED */
   #screen-blocked, #screen-waiting { align-items:center; justify-content:center; gap:16px; padding:40px; text-align:center; }
   .status-icon { font-size:56px; }
   .status-title { font-size:22px; font-weight:700; }
@@ -34,7 +32,6 @@
   .device-id-box { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 16px; font-family:'DM Mono',monospace; font-size:12px; color:var(--accent); word-break:break-all; max-width:300px; }
   .retry-btn { margin-top:8px; background:var(--surface2); border:1px solid var(--border); color:var(--text); font-family:'DM Sans',sans-serif; font-size:15px; padding:12px 28px; border-radius:10px; cursor:pointer; }
 
-  /* HOME */
   .home-header { padding:52px 24px 20px; border-bottom:1px solid var(--border); }
   .home-header .logo { font-size:22px; }
   .home-greeting { color:var(--text2); font-size:13px; margin-top:4px; }
@@ -52,7 +49,6 @@
   .action-btn.rto .btn-label { color:var(--accent2); }
   .btn-sub { font-size:12px; color:var(--text2); text-align:center; line-height:1.4; }
 
-  /* SCANNER */
   #screen-scanner { position:relative; background:#000; }
   #video { width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0; }
   #canvas { display:none; }
@@ -69,32 +65,28 @@
   .scan-counter-pill { background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); border-radius:100px; padding:8px 18px; font-size:13px; font-weight:600; }
   .scan-counter-pill span { font-family:'DM Mono',monospace; font-size:16px; }
 
-  /* Viewfinder — wider for 1D barcodes */
-  .viewfinder { width:280px; height:120px; position:relative; flex-shrink:0; }
+  /* Wider viewfinder for 1D barcodes */
+  .viewfinder { width:300px; height:100px; position:relative; flex-shrink:0; }
   .viewfinder::before,.viewfinder::after,.vf-br::before,.vf-br::after { content:''; position:absolute; width:24px; height:24px; border-color:#fff; border-style:solid; }
   .viewfinder::before { top:0; left:0; border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
   .viewfinder::after  { top:0; right:0; border-width:3px 3px 0 0; border-radius:0 4px 0 0; }
   .vf-br::before { bottom:0; left:0; border-width:0 0 3px 3px; border-radius:0 0 0 4px; }
   .vf-br::after  { bottom:0; right:0; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
-  .scan-line { position:absolute; left:4px; right:4px; height:2px; background:linear-gradient(90deg,transparent,var(--accent),transparent); animation:scanline 1.8s ease-in-out infinite; }
+  .scan-line { position:absolute; top:50%; left:4px; right:4px; height:2px; transform:translateY(-50%); background:linear-gradient(90deg,transparent,var(--accent),transparent); animation:pulse 1.5s ease-in-out infinite; }
   .scan-line.rto { background:linear-gradient(90deg,transparent,var(--accent2),transparent); }
-  @keyframes scanline { 0%,100% { top:4px; } 50% { top:calc(100% - 4px); } }
+  @keyframes pulse { 0%,100% { opacity:0.4; } 50% { opacity:1; } }
 
   .scanner-bottom { pointer-events:all; width:100%; display:flex; flex-direction:column; align-items:center; gap:12px; }
-  .scanner-hint { color:rgba(255,255,255,0.5); font-size:12px; text-align:center; }
-
-  /* Last scan feedback */
-  .last-scan-pill { background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); border-radius:10px; padding:10px 16px; font-size:14px; min-height:40px; display:flex; align-items:center; gap:10px; max-width:300px; width:100%; justify-content:center; }
-  .last-scan-pill .order-num { font-family:'DM Mono',monospace; font-weight:600; font-size:16px; }
+  .scanner-hint { color:rgba(255,255,255,0.5); font-size:12px; text-align:center; line-height:1.5; }
+  .last-scan-pill { background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); border-radius:10px; padding:10px 16px; font-size:14px; min-height:40px; display:flex; align-items:center; gap:10px; max-width:320px; width:100%; justify-content:center; }
+  .last-scan-pill .scan-num { font-family:'DM Mono',monospace; font-weight:600; font-size:15px; }
   .pay-badge { font-size:11px; padding:3px 10px; border-radius:100px; font-weight:600; }
   .pay-badge.cod { background:rgba(240,192,64,0.2); color:var(--accent); }
   .pay-badge.prepaid { background:rgba(64,192,112,0.2); color:var(--green); }
   .pay-badge.error { background:rgba(224,64,64,0.2); color:var(--red); }
-
   .done-btn { width:100%; max-width:320px; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.15); color:#fff; font-family:'DM Sans',sans-serif; font-size:16px; font-weight:600; padding:16px; border-radius:var(--radius); cursor:pointer; }
   .done-btn:active { background:rgba(255,255,255,0.12); }
 
-  /* REPORT MODAL */
   .modal-backdrop { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); backdrop-filter:blur(4px); z-index:100; align-items:flex-end; justify-content:center; padding:0 0 24px; }
   .modal-backdrop.open { display:flex; }
   .modal { background:var(--surface); border:1px solid var(--border); border-radius:20px 20px 16px 16px; width:100%; max-width:420px; padding:28px 24px 24px; animation:slideUp 0.25s ease; display:flex; flex-direction:column; max-height:82vh; }
@@ -102,26 +94,22 @@
   .modal-title { font-size:18px; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:10px; flex-shrink:0; }
   .modal-title .dot { width:10px; height:10px; border-radius:50%; background:var(--accent); flex-shrink:0; }
   .modal-title .dot.rto { background:var(--accent2); }
-
   .report-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:16px; flex-shrink:0; }
   .stat-box { background:var(--surface2); border-radius:10px; padding:12px 8px; text-align:center; }
   .stat-value { font-family:'DM Mono',monospace; font-size:26px; font-weight:600; line-height:1; }
   .stat-label { font-size:10px; color:var(--text2); margin-top:4px; text-transform:uppercase; letter-spacing:0.5px; }
-
   .scan-list-title { font-size:12px; color:var(--text2); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; flex-shrink:0; }
   .scan-list { overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
   .scan-list-item { display:flex; align-items:center; justify-content:space-between; background:var(--surface2); border-radius:8px; padding:10px 14px; }
-  .scan-item-num { font-family:'DM Mono',monospace; font-size:15px; font-weight:600; }
+  .scan-item-num { font-family:'DM Mono',monospace; font-size:13px; font-weight:600; }
   .scan-item-badge { font-size:11px; padding:3px 10px; border-radius:100px; font-weight:600; }
   .scan-item-badge.cod { background:rgba(240,192,64,0.15); color:var(--accent); }
   .scan-item-badge.prepaid { background:rgba(64,192,112,0.15); color:var(--green); }
   .scan-item-badge.error { background:rgba(224,64,64,0.15); color:var(--red); font-size:10px; }
-
   .modal-ok-btn { width:100%; background:var(--accent); color:#000; font-family:'DM Sans',sans-serif; font-size:16px; font-weight:700; padding:16px; border-radius:12px; border:none; cursor:pointer; flex-shrink:0; }
   .modal-ok-btn:active { opacity:0.8; }
   .modal-ok-btn.rto { background:var(--accent2); color:#fff; }
 
-  /* TOAST */
   .toast { position:fixed; bottom:32px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:10px 20px; border-radius:100px; font-size:13px; opacity:0; transition:all 0.2s; z-index:200; white-space:nowrap; pointer-events:none; }
   .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 </style>
@@ -172,7 +160,7 @@
       <div class="scan-line" id="scan-line"></div>
     </div>
     <div class="scanner-bottom">
-      <div class="scanner-hint">Point at the Order Id barcode (bottom barcode)</div>
+      <div class="scanner-hint" id="scanner-hint">Point at the Order Id barcode (bottom barcode)</div>
       <div class="last-scan-pill" id="last-scan-pill">
         <span style="color:var(--text2);font-size:13px">Ready to scan</span>
       </div>
@@ -193,7 +181,7 @@
       <div class="stat-box"><div class="stat-value" id="report-cod" style="color:var(--accent)">0</div><div class="stat-label">COD</div></div>
       <div class="stat-box"><div class="stat-value" id="report-errors" style="color:var(--red)">0</div><div class="stat-label">Errors</div></div>
     </div>
-    <div class="scan-list-title">Scanned Orders</div>
+    <div class="scan-list-title">Scanned Items</div>
     <div class="scan-list" id="scan-list"></div>
     <button class="modal-ok-btn" id="modal-ok-btn" onclick="closeReport()">OK</button>
   </div>
@@ -201,20 +189,26 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.21.3/umd/index.min.js"></script>
+<!-- jsQR for QR codes — confirmed working on cdnjs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js"></script>
+
 <script>
+// ============================================================
+// CONFIG
+// ============================================================
 const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbyJvs63tDwTSc3P3ub37ZsZRDgOIYDodkR3pN5UkWjLbTWlvZtJ6W8a2JT1AvvxDIYj/exec';
 
-// Order number: purely numeric, 3-6 digits
-// AWB numbers are 15+ digits — automatically rejected
+// DISPATCH: scan Order ID barcode — purely numeric, 3-6 digits
 const ORDER_NUM_REGEX = /^\d{3,6}$/;
 
-// QR_SCAN_ENABLED = false
-// To re-enable QR scanning in future, set to true and handle kk.app URLs in handleRawScan()
-const QR_SCAN_ENABLED = false;
+// RTO: scan AWB barcode — numeric, 10-25 digits
+const AWB_REGEX = /^\d{10,25}$/;
 
 const SCAN_DEBOUNCE_MS = 2000;
 
+// ============================================================
+// STATE
+// ============================================================
 let deviceId    = null;
 let deviceName  = '';
 let permissions = { dispatch: false, rto: false };
@@ -222,10 +216,13 @@ let currentMode = null;
 let scanSession = [];
 let scanActive  = false;
 let videoStream = null;
-let codeReader  = null;
+let scanRAF     = null;
 let ding = null, errorSnd = null;
 let lastRaw = '', lastRawTime = 0;
 
+// ============================================================
+// INIT
+// ============================================================
 window.addEventListener('load', () => { buildSounds(); init(); });
 
 async function init() {
@@ -250,13 +247,16 @@ function getDeviceId() {
   return id;
 }
 
+// ============================================================
+// HOME GRID
+// ============================================================
 function buildHomeGrid() {
   const grid = document.getElementById('home-grid');
   grid.innerHTML = '';
   document.getElementById('home-device-label').textContent = deviceName;
   const btns = [
-    { id:'dispatch', label:'DISPATCH', sub:'Mark orders as dispatched', icon:'📦', perm:permissions.dispatch },
-    { id:'rto',      label:'RTO',      sub:'Record returned orders',    icon:'↩️',  perm:permissions.rto }
+    { id:'dispatch', label:'DISPATCH', sub:'Scan Order ID barcode', icon:'📦', perm:permissions.dispatch },
+    { id:'rto',      label:'RTO',      sub:'Scan AWB barcode',      icon:'↩️',  perm:permissions.rto }
   ];
   btns.forEach(b => {
     if (!b.perm) return;
@@ -269,74 +269,139 @@ function buildHomeGrid() {
   if (!grid.children.length) grid.innerHTML = '<div style="grid-column:1/-1;color:var(--text2);font-size:14px;text-align:center;padding:40px 0">No operations assigned.<br>Contact your admin.</div>';
 }
 
+// ============================================================
+// SCANNER — uses jsQR + inline Code128 decoder
+// ============================================================
 async function startScanner(mode) {
   currentMode = mode; scanSession = []; lastRaw = '';
   document.getElementById('scan-count').textContent = '0';
   document.getElementById('last-scan-pill').innerHTML = '<span style="color:var(--text2);font-size:13px">Ready to scan</span>';
+
   const pill = document.getElementById('scanner-mode-pill');
   pill.textContent = mode === 'dispatch' ? 'DISPATCH' : 'RTO';
   pill.className   = 'scanner-mode-pill ' + mode;
   document.getElementById('scan-line').className = 'scan-line ' + mode;
+
+  // Update hint based on mode
+  document.getElementById('scanner-hint').textContent = mode === 'dispatch'
+    ? 'Point at the Order Id barcode (bottom barcode)'
+    : 'Point at the AWB barcode (top barcode)';
+
   showScreen('scanner');
+
   try {
-    videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'environment', width:{ideal:1280}, height:{ideal:720} } });
+    videoStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode:'environment', width:{ideal:1280}, height:{ideal:720} }
+    });
     const video = document.getElementById('video');
     video.srcObject = videoStream;
     await video.play();
-    codeReader = new ZXing.BrowserMultiFormatReader();
-    codeReader.decodeFromVideoElement(video, (result, err) => { if (result) handleRawScan(result.getText()); });
     scanActive = true;
-  } catch(err) { showToast('Camera error: ' + err.message); showScreen('home'); }
+    requestAnimationFrame(scanFrame);
+  } catch(err) {
+    showToast('Camera error: ' + err.message);
+    showScreen('home');
+  }
 }
 
+function scanFrame() {
+  if (!scanActive) return;
+  const video  = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+
+  if (video.readyState === video.HAVE_ENOUGH_DATA) {
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    // Try jsQR first (QR codes)
+    const qr = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+    if (qr && qr.data) {
+      handleRawScan(qr.data);
+    } else {
+      // Try Code128 1D barcode decoder
+      const barcode = decodeCode128(imageData);
+      if (barcode) handleRawScan(barcode);
+    }
+  }
+  scanRAF = requestAnimationFrame(scanFrame);
+}
+
+// ============================================================
+// HANDLE RAW SCAN
+// ============================================================
 function handleRawScan(raw) {
   if (!raw || !scanActive) return;
   const now = Date.now();
   if (raw === lastRaw && (now - lastRawTime) < SCAN_DEBOUNCE_MS) return;
   lastRaw = raw; lastRawTime = now;
 
-  // QR placeholder — uncomment when re-enabling
-  // if (QR_SCAN_ENABLED && raw.startsWith('https://kk.app/e/order/')) { handleQrScan(raw); return; }
-
   const trimmed = raw.trim();
-  if (!ORDER_NUM_REGEX.test(trimmed)) return; // not an order number — silent skip
-  if (scanSession.find(s => s.orderNum === trimmed)) return; // duplicate — silent skip
-  processScan(trimmed);
+
+  if (currentMode === 'dispatch') {
+    // Dispatch: expect 3-6 digit order number
+    if (!ORDER_NUM_REGEX.test(trimmed)) return; // silent skip — AWB or other
+    if (scanSession.find(s => s.scanValue === trimmed)) return; // duplicate
+    processScan(trimmed);
+
+  } else if (currentMode === 'rto') {
+    // RTO: expect 10-25 digit AWB number
+    if (!AWB_REGEX.test(trimmed)) return; // silent skip — not an AWB
+    if (scanSession.find(s => s.scanValue === trimmed)) return; // duplicate
+    processScan(trimmed);
+  }
 }
 
-async function processScan(orderNum) {
-  const entry = { orderNum, paymentType:'...', status:'pending', error:null };
+// ============================================================
+// PROCESS SCAN — calls backend
+// ============================================================
+async function processScan(scanValue) {
+  const entry = { scanValue, paymentType:'...', status:'pending', error:null };
   scanSession.push(entry);
   document.getElementById('scan-count').textContent = scanSession.length;
   const today = getTodayTag();
+
+  // Build params — dispatch sends orderNum, rto sends awb
+  const params = { action:'scanOrder', mode:currentMode, date:today };
+  if (currentMode === 'dispatch') params.orderNum = scanValue;
+  else                            params.awb       = scanValue;
+
   try {
-    const res = await apiCall({ action:'scanOrder', orderNum, mode:currentMode, date:today });
+    const res = await apiCall(params);
     if (res.error) {
       entry.status = 'error'; entry.paymentType = 'error'; entry.error = res.error;
-      flash('error'); playError(); showLastScan(orderNum, 'error', res.error);
+      flash('error'); playError();
+      showLastScan(scanValue, 'error', res.error);
     } else {
       entry.status = 'success'; entry.paymentType = res.paymentType || 'Unknown';
-      flash(currentMode); playDing(); showLastScan(orderNum, res.paymentType, null);
+      flash(currentMode); playDing();
+      showLastScan(scanValue, res.paymentType, null);
     }
   } catch(err) {
     entry.status = 'error'; entry.paymentType = 'error'; entry.error = 'Network error';
-    flash('error'); playError(); showLastScan(orderNum, 'error', 'Network error');
+    flash('error'); playError();
+    showLastScan(scanValue, 'error', 'Network error');
   }
 }
 
-function showLastScan(orderNum, paymentType, errMsg) {
+function showLastScan(val, paymentType, errMsg) {
   const pill = document.getElementById('last-scan-pill');
   if (errMsg) {
-    pill.innerHTML = `<span class="order-num">#${orderNum}</span><span class="pay-badge error">Not found</span>`;
+    pill.innerHTML = `<span class="scan-num">${val}</span><span class="pay-badge error">Not found</span>`;
   } else {
     const isCod = (paymentType||'').toLowerCase().includes('cod');
-    pill.innerHTML = `<span class="order-num">#${orderNum}</span><span class="pay-badge ${isCod?'cod':'prepaid'}">${isCod?'COD':'Prepaid'}</span>`;
+    pill.innerHTML = `<span class="scan-num">${val}</span><span class="pay-badge ${isCod?'cod':'prepaid'}">${isCod?'COD':'Prepaid'}</span>`;
   }
 }
 
+// ============================================================
+// STOP + REPORT
+// ============================================================
 function stopScanner() {
   scanActive = false;
-  if (codeReader) { try { codeReader.reset(); } catch(e){} codeReader = null; }
+  if (scanRAF) { cancelAnimationFrame(scanRAF); scanRAF = null; }
   if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
   setTimeout(showReport, 400);
 }
@@ -359,25 +424,212 @@ function showReport() {
   const list = document.getElementById('scan-list');
   list.innerHTML = '';
   if (!scanSession.length) {
-    list.innerHTML = '<div style="color:var(--text2);font-size:14px;text-align:center;padding:16px">No orders scanned</div>';
+    list.innerHTML = '<div style="color:var(--text2);font-size:14px;text-align:center;padding:16px">No items scanned</div>';
   } else {
     scanSession.forEach(s => {
       const isErr = s.status === 'error';
       const isCod = (s.paymentType||'').toLowerCase().includes('cod');
       const cls   = isErr ? 'error' : (isCod ? 'cod' : 'prepaid');
       const lbl   = isErr ? (s.error || 'Error') : (isCod ? 'COD' : 'Prepaid');
-      const el = document.createElement('div');
+      const el    = document.createElement('div');
       el.className = 'scan-list-item';
-      el.innerHTML = `<span class="scan-item-num">#${s.orderNum}</span><span class="scan-item-badge ${cls}">${lbl}</span>`;
+      el.innerHTML = `<span class="scan-item-num">${s.scanValue}</span><span class="scan-item-badge ${cls}">${lbl}</span>`;
       list.appendChild(el);
     });
   }
   document.getElementById('report-modal').classList.add('open');
 }
 
-function closeReport() { document.getElementById('report-modal').classList.remove('open'); showScreen('home'); }
+function closeReport() {
+  document.getElementById('report-modal').classList.remove('open');
+  showScreen('home');
+}
 
-function showScreen(name) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById('screen-' + name).classList.add('active'); }
+// ============================================================
+// CODE 128 DECODER
+// Scans horizontal rows of the image for Code 128 barcodes
+// ============================================================
+function decodeCode128(imageData) {
+  const { data, width, height } = imageData;
+
+  // Sample multiple horizontal rows across the middle third of the image
+  const rows = [];
+  for (let r = Math.floor(height * 0.3); r <= Math.floor(height * 0.7); r += 4) {
+    rows.push(r);
+  }
+
+  for (const row of rows) {
+    const result = decodeCode128Row(data, width, row);
+    if (result) return result;
+  }
+  return null;
+}
+
+function decodeCode128Row(data, width, row) {
+  // Convert row to grayscale + binarize with adaptive threshold
+  const gray = new Uint8Array(width);
+  for (let x = 0; x < width; x++) {
+    const i = (row * width + x) * 4;
+    gray[x] = (data[i] * 77 + data[i+1] * 150 + data[i+2] * 29) >> 8;
+  }
+
+  // Adaptive threshold — use local average
+  const threshold = gray.reduce((a, b) => a + b, 0) / width;
+  const binary = new Uint8Array(width);
+  for (let x = 0; x < width; x++) binary[x] = gray[x] < threshold ? 1 : 0;
+
+  // Find runs of black/white
+  const runs = [];
+  let current = binary[0], count = 1;
+  for (let x = 1; x < width; x++) {
+    if (binary[x] === current) { count++; }
+    else { runs.push({ val: current, len: count }); current = binary[x]; count = 1; }
+  }
+  runs.push({ val: current, len: count });
+
+  // Need at least the start pattern + some data + stop
+  if (runs.length < 10) return null;
+
+  // Find the quiet zone + start pattern
+  // Code 128 start patterns: 211412, 211214, 211232 (ratio-based)
+  // We look for 6-bar sequences with specific ratios
+  for (let i = 0; i < runs.length - 30; i++) {
+    // Must start with a black bar
+    if (runs[i].val !== 1) continue;
+
+    const unit = detectCode128Start(runs, i);
+    if (!unit) continue;
+
+    // Decode bars from start
+    const decoded = extractCode128Bars(runs, i, unit);
+    if (decoded && /^\d+$/.test(decoded) && decoded.length >= 6) {
+      return decoded;
+    }
+  }
+  return null;
+}
+
+function detectCode128Start(runs, i) {
+  // Check if we have enough runs
+  if (i + 6 >= runs.length) return null;
+
+  // Get 6 bars for start pattern
+  const bars = runs.slice(i, i + 6).map(r => r.len);
+  const total = bars.reduce((a,b) => a+b, 0);
+  if (total < 12) return null; // too thin to be a barcode
+
+  const unit = total / 11; // code128 start = 11 units wide
+  if (unit < 1) return null;
+
+  return unit;
+}
+
+function extractCode128Bars(runs, startIdx, unit) {
+  try {
+    // Skip start pattern (6 bars = indices startIdx to startIdx+5)
+    let idx = startIdx + 6;
+    const chars = [];
+    let codeSet = null;
+
+    // Detect which start code (A, B, or C)
+    const startBars = runs.slice(startIdx, startIdx + 6).map(r => Math.round(r.len / unit));
+    const startVal  = barsToCode128Value(startBars);
+    if (startVal === 103)      codeSet = 'A';
+    else if (startVal === 104) codeSet = 'B';
+    else if (startVal === 105) codeSet = 'C';
+    else return null;
+
+    // Decode data bars (each char = 3 bars black + 3 bars white = 6 bars)
+    while (idx + 6 < runs.length) {
+      const barGroup = runs.slice(idx, idx + 6);
+      if (barGroup.length < 6) break;
+
+      const widths = barGroup.map(r => Math.max(1, Math.round(r.len / unit)));
+      const value  = barsToCode128Value(widths);
+
+      // Stop character check (value 106)
+      if (value === 106) break;
+      // Invalid value
+      if (value === null || value > 106) break;
+
+      // Code C encodes two digits per symbol
+      if (codeSet === 'C') {
+        if (value < 100) chars.push(value.toString().padStart(2, '0'));
+        else if (value === 100) codeSet = 'B';
+        else if (value === 101) codeSet = 'A';
+      } else {
+        // Code B: values 0-95 map to ASCII 32-127
+        if (value < 96) {
+          chars.push(String.fromCharCode(value + 32));
+        } else if (value === 99) {
+          codeSet = 'C';
+        } else if (value === 100) {
+          codeSet = 'B';
+        } else if (value === 101) {
+          codeSet = 'A';
+        }
+      }
+      idx += 6;
+    }
+
+    if (chars.length === 0) return null;
+    return chars.join('');
+  } catch(e) {
+    return null;
+  }
+}
+
+// Convert 6 bar widths to Code 128 symbol value
+// Code 128 uses patterns of 6 bars (3 black, 3 white) summing to 11 units
+function barsToCode128Value(widths) {
+  if (widths.length !== 6) return null;
+  const sum = widths.reduce((a,b) => a+b, 0);
+  if (sum < 8 || sum > 14) return null; // allow some tolerance
+
+  // Encode as string key and look up in table
+  const key = widths.join('');
+  return CODE128_TABLE[key] !== undefined ? CODE128_TABLE[key] : null;
+}
+
+// Code 128 lookup table: bar pattern → value
+// Each entry: 6 bar widths (3 black + 3 white alternating) → symbol value 0-106
+const CODE128_TABLE = (function() {
+  const patterns = [
+    [2,1,2,2,2,2],[2,2,2,1,2,2],[2,2,2,2,2,1],[1,2,1,2,2,3],[1,2,1,3,2,2],
+    [1,3,1,2,2,2],[1,2,2,2,1,3],[1,2,2,3,1,2],[1,3,2,2,1,2],[2,2,1,2,1,3],
+    [2,2,1,3,1,2],[2,3,1,2,1,2],[1,1,2,2,3,2],[1,2,2,1,3,2],[1,2,2,2,3,1],
+    [1,1,3,2,2,2],[1,2,3,1,2,2],[1,2,3,2,2,1],[2,2,3,2,1,1],[2,2,1,1,3,2],
+    [2,2,1,2,3,1],[2,1,3,2,1,2],[2,2,3,1,1,2],[3,1,2,1,3,1],[3,1,1,2,2,2],
+    [3,2,1,1,2,2],[3,2,1,2,2,1],[3,1,2,2,1,2],[3,2,2,1,1,2],[3,2,2,2,1,1],
+    [2,1,2,1,2,3],[2,1,2,3,2,1],[2,3,2,1,2,1],[1,1,1,3,2,3],[1,3,1,1,2,3],
+    [1,3,1,3,2,1],[1,1,2,3,1,3],[1,3,2,1,1,3],[1,3,2,3,1,1],[2,1,1,3,1,3],
+    [2,3,1,1,1,3],[2,3,1,3,1,1],[1,1,2,1,3,3],[1,1,2,3,3,1],[1,3,2,1,3,1],
+    [1,1,3,1,2,3],[1,1,3,3,2,1],[1,3,3,1,2,1],[3,1,3,1,2,1],[2,1,1,3,3,1],
+    [2,3,1,1,3,1],[2,1,3,1,1,3],[2,1,3,3,1,1],[2,1,3,1,3,1],[3,1,1,1,2,3],
+    [3,1,1,3,2,1],[3,3,1,1,2,1],[3,1,2,1,1,3],[3,1,2,3,1,1],[3,3,2,1,1,1],
+    [3,1,4,1,1,1],[2,2,1,4,1,1],[4,3,1,1,1,1],[1,1,1,2,2,4],[1,1,1,4,2,2],
+    [1,2,1,1,2,4],[1,2,1,4,2,1],[1,4,1,1,2,2],[1,4,1,2,2,1],[1,1,2,2,1,4],
+    [1,1,2,4,1,2],[1,2,2,1,1,4],[1,2,2,4,1,1],[1,4,2,1,1,2],[1,4,2,2,1,1],
+    [2,4,1,2,1,1],[2,2,1,1,1,4],[4,1,3,1,1,1],[2,4,1,1,1,2],[1,3,4,1,1,1],
+    [1,1,1,2,4,2],[1,2,1,1,4,2],[1,2,1,2,4,1],[1,1,4,2,1,2],[1,2,4,1,1,2],
+    [1,2,4,2,1,1],[4,1,1,2,1,2],[4,2,1,1,1,2],[4,2,1,2,1,1],[2,1,2,1,4,1],
+    [2,1,4,1,2,1],[4,1,2,1,2,1],[1,1,1,1,4,3],[1,1,1,3,4,1],[1,3,1,1,4,1],
+    [1,1,4,1,1,3],[1,1,4,3,1,1],[4,1,1,1,1,3],[4,1,1,3,1,1],[1,1,3,1,4,1],
+    [1,1,4,1,3,1],[3,1,1,1,4,1],[4,1,1,1,3,1],[2,1,1,4,1,2],[2,1,1,2,1,4],
+    [2,1,1,2,3,2],[2,3,3,1,1,1]
+  ];
+  const table = {};
+  patterns.forEach((p, i) => { table[p.join('')] = i; });
+  return table;
+})();
+
+// ============================================================
+// HELPERS
+// ============================================================
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+}
 
 function getTodayTag() {
   const d = new Date();
