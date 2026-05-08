@@ -5,453 +5,143 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Kaidoo Scanner</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap');
-
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-
   :root {
-    --bg: #0f0f0f;
-    --surface: #1a1a1a;
-    --surface2: #242424;
-    --border: #2e2e2e;
-    --accent: #f0c040;
-    --accent2: #e87040;
-    --text: #f0f0f0;
-    --text2: #888;
-    --green: #40c070;
-    --red: #e04040;
-    --radius: 16px;
+    --bg:#0f0f0f; --surface:#1a1a1a; --surface2:#242424; --border:#2e2e2e;
+    --accent:#f0c040; --accent2:#e87040; --text:#f0f0f0; --text2:#888;
+    --green:#40c070; --red:#e04040; --radius:16px;
   }
+  body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); height:100vh; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
+  .screen { display:none; flex-direction:column; height:100vh; height:100dvh; width:100%; }
+  .screen.active { display:flex; }
 
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    min-height: 100dvh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
+  /* LOADING */
+  #screen-loading { align-items:center; justify-content:center; gap:20px; }
+  .logo { font-size:28px; font-weight:700; letter-spacing:-0.5px; }
+  .logo span { color:var(--accent); }
+  .spinner { width:36px; height:36px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .loading-text { color:var(--text2); font-size:14px; }
 
-  /* ---- SCREENS ---- */
-  .screen {
-    display: none;
-    flex-direction: column;
-    height: 100vh;
-    height: 100dvh;
-    width: 100%;
-  }
-  .screen.active { display: flex; }
+  /* WAITING / BLOCKED */
+  #screen-blocked, #screen-waiting { align-items:center; justify-content:center; gap:16px; padding:40px; text-align:center; }
+  .status-icon { font-size:56px; }
+  .status-title { font-size:22px; font-weight:700; }
+  .status-sub { color:var(--text2); font-size:15px; line-height:1.6; max-width:280px; }
+  .device-id-box { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 16px; font-family:'DM Mono',monospace; font-size:12px; color:var(--accent); word-break:break-all; max-width:300px; }
+  .retry-btn { margin-top:8px; background:var(--surface2); border:1px solid var(--border); color:var(--text); font-family:'DM Sans',sans-serif; font-size:15px; padding:12px 28px; border-radius:10px; cursor:pointer; }
 
-  /* ---- LOADING ---- */
-  #screen-loading {
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-  }
-  .logo {
-    font-size: 28px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-  }
-  .logo span { color: var(--accent); }
-  .spinner {
-    width: 36px; height: 36px;
-    border: 3px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loading-text { color: var(--text2); font-size: 14px; }
+  /* HOME */
+  .home-header { padding:52px 24px 20px; border-bottom:1px solid var(--border); }
+  .home-header .logo { font-size:22px; }
+  .home-greeting { color:var(--text2); font-size:13px; margin-top:4px; }
+  .home-device { font-family:'DM Mono',monospace; font-size:11px; color:var(--border); margin-top:2px; }
+  .home-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:24px; flex:1; align-content:start; }
+  .action-btn { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:28px 16px; display:flex; flex-direction:column; align-items:center; gap:12px; cursor:pointer; transition:all 0.15s; user-select:none; }
+  .action-btn:active { transform:scale(0.96); background:var(--surface2); }
+  .action-btn.dispatch { border-color:rgba(240,192,64,0.3); }
+  .action-btn.dispatch:active { background:rgba(240,192,64,0.08); }
+  .action-btn.rto { border-color:rgba(232,112,64,0.3); }
+  .action-btn.rto:active { background:rgba(232,112,64,0.08); }
+  .btn-icon { font-size:36px; }
+  .btn-label { font-size:16px; font-weight:700; letter-spacing:0.5px; }
+  .action-btn.dispatch .btn-label { color:var(--accent); }
+  .action-btn.rto .btn-label { color:var(--accent2); }
+  .btn-sub { font-size:12px; color:var(--text2); text-align:center; line-height:1.4; }
 
-  /* ---- BLOCKED / WAITING ---- */
-  #screen-blocked, #screen-waiting {
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    padding: 40px;
-    text-align: center;
-  }
-  .status-icon {
-    font-size: 56px;
-    line-height: 1;
-  }
-  .status-title {
-    font-size: 22px;
-    font-weight: 700;
-  }
-  .status-sub {
-    color: var(--text2);
-    font-size: 15px;
-    line-height: 1.6;
-    max-width: 280px;
-  }
-  .device-id-box {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 12px 16px;
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    color: var(--accent);
-    word-break: break-all;
-    text-align: center;
-    max-width: 300px;
-  }
-  .retry-btn {
-    margin-top: 8px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 15px;
-    padding: 12px 28px;
-    border-radius: 10px;
-    cursor: pointer;
-  }
+  /* SCANNER */
+  #screen-scanner { position:relative; background:#000; }
+  #video { width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0; }
+  #canvas { display:none; }
+  .flash-overlay { position:absolute; top:0; left:0; right:0; bottom:0; opacity:0; pointer-events:none; transition:opacity 0.05s; }
+  .flash-overlay.dispatch-flash { background:rgba(240,192,64,0.2); }
+  .flash-overlay.rto-flash { background:rgba(232,112,64,0.2); }
+  .flash-overlay.error-flash { background:rgba(224,64,64,0.2); }
+  .flash-overlay.active { opacity:1; }
+  .scanner-overlay { position:absolute; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:52px 24px 40px; pointer-events:none; }
+  .scanner-top { display:flex; width:100%; align-items:center; justify-content:space-between; pointer-events:all; }
+  .scanner-mode-pill { background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); border-radius:100px; padding:8px 18px; font-size:13px; font-weight:600; }
+  .scanner-mode-pill.dispatch { color:var(--accent); }
+  .scanner-mode-pill.rto { color:var(--accent2); }
+  .scan-counter-pill { background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); border-radius:100px; padding:8px 18px; font-size:13px; font-weight:600; }
+  .scan-counter-pill span { font-family:'DM Mono',monospace; font-size:16px; }
 
-  /* ---- HOME ---- */
-  #screen-home {
-    padding: 0;
-  }
-  .home-header {
-    padding: 52px 24px 20px;
-    border-bottom: 1px solid var(--border);
-  }
-  .home-header .logo { font-size: 22px; }
-  .home-greeting {
-    color: var(--text2);
-    font-size: 13px;
-    margin-top: 4px;
-  }
-  .home-device {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    color: var(--border);
-    margin-top: 2px;
-  }
-  .home-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    padding: 24px;
-    flex: 1;
-    align-content: start;
-  }
-  .action-btn {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 28px 16px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    position: relative;
-    overflow: hidden;
-    -webkit-user-select: none;
-    user-select: none;
-  }
-  .action-btn:active {
-    transform: scale(0.96);
-    background: var(--surface2);
-  }
-  .action-btn.dispatch { border-color: rgba(240,192,64,0.3); }
-  .action-btn.dispatch:active { background: rgba(240,192,64,0.08); }
-  .action-btn.rto { border-color: rgba(232,112,64,0.3); }
-  .action-btn.rto:active { background: rgba(232,112,64,0.08); }
+  /* Viewfinder — wider for 1D barcodes */
+  .viewfinder { width:280px; height:120px; position:relative; flex-shrink:0; }
+  .viewfinder::before,.viewfinder::after,.vf-br::before,.vf-br::after { content:''; position:absolute; width:24px; height:24px; border-color:#fff; border-style:solid; }
+  .viewfinder::before { top:0; left:0; border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
+  .viewfinder::after  { top:0; right:0; border-width:3px 3px 0 0; border-radius:0 4px 0 0; }
+  .vf-br::before { bottom:0; left:0; border-width:0 0 3px 3px; border-radius:0 0 0 4px; }
+  .vf-br::after  { bottom:0; right:0; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
+  .scan-line { position:absolute; left:4px; right:4px; height:2px; background:linear-gradient(90deg,transparent,var(--accent),transparent); animation:scanline 1.8s ease-in-out infinite; }
+  .scan-line.rto { background:linear-gradient(90deg,transparent,var(--accent2),transparent); }
+  @keyframes scanline { 0%,100% { top:4px; } 50% { top:calc(100% - 4px); } }
 
-  .btn-icon {
-    font-size: 36px;
-    line-height: 1;
-  }
-  .btn-label {
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-  }
-  .action-btn.dispatch .btn-label { color: var(--accent); }
-  .action-btn.rto .btn-label { color: var(--accent2); }
-  .btn-sub {
-    font-size: 12px;
-    color: var(--text2);
-    text-align: center;
-    line-height: 1.4;
-  }
+  .scanner-bottom { pointer-events:all; width:100%; display:flex; flex-direction:column; align-items:center; gap:12px; }
+  .scanner-hint { color:rgba(255,255,255,0.5); font-size:12px; text-align:center; }
 
-  /* ---- SCANNER ---- */
-  #screen-scanner {
-    position: relative;
-    background: #000;
-  }
-  #video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    position: absolute;
-    top: 0; left: 0;
-  }
-  .scanner-overlay {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
-    padding: 52px 24px 40px;
-    pointer-events: none;
-  }
-  .scanner-top {
-    display: flex;
-    width: 100%;
-    align-items: center;
-    justify-content: space-between;
-    pointer-events: all;
-  }
-  .scanner-mode-pill {
-    background: rgba(0,0,0,0.7);
-    backdrop-filter: blur(8px);
-    border-radius: 100px;
-    padding: 8px 18px;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-  }
-  .scanner-mode-pill.dispatch { color: var(--accent); }
-  .scanner-mode-pill.rto { color: var(--accent2); }
+  /* Last scan feedback */
+  .last-scan-pill { background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); border-radius:10px; padding:10px 16px; font-size:14px; min-height:40px; display:flex; align-items:center; gap:10px; max-width:300px; width:100%; justify-content:center; }
+  .last-scan-pill .order-num { font-family:'DM Mono',monospace; font-weight:600; font-size:16px; }
+  .pay-badge { font-size:11px; padding:3px 10px; border-radius:100px; font-weight:600; }
+  .pay-badge.cod { background:rgba(240,192,64,0.2); color:var(--accent); }
+  .pay-badge.prepaid { background:rgba(64,192,112,0.2); color:var(--green); }
+  .pay-badge.error { background:rgba(224,64,64,0.2); color:var(--red); }
 
-  .scan-counter-pill {
-    background: rgba(0,0,0,0.7);
-    backdrop-filter: blur(8px);
-    border-radius: 100px;
-    padding: 8px 18px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-  }
-  .scan-counter-pill span {
-    font-family: 'DM Mono', monospace;
-    font-size: 16px;
-  }
+  .done-btn { width:100%; max-width:320px; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.15); color:#fff; font-family:'DM Sans',sans-serif; font-size:16px; font-weight:600; padding:16px; border-radius:var(--radius); cursor:pointer; }
+  .done-btn:active { background:rgba(255,255,255,0.12); }
 
-  /* Viewfinder box */
-  .viewfinder {
-    width: 240px;
-    height: 240px;
-    position: relative;
-    flex-shrink: 0;
-  }
-  .viewfinder::before,
-  .viewfinder::after,
-  .vf-br::before,
-  .vf-br::after {
-    content: '';
-    position: absolute;
-    width: 28px;
-    height: 28px;
-    border-color: #fff;
-    border-style: solid;
-  }
-  .viewfinder::before { top: 0; left: 0; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
-  .viewfinder::after  { top: 0; right: 0; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
-  .vf-br::before { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
-  .vf-br::after  { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+  /* REPORT MODAL */
+  .modal-backdrop { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); backdrop-filter:blur(4px); z-index:100; align-items:flex-end; justify-content:center; padding:0 0 24px; }
+  .modal-backdrop.open { display:flex; }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:20px 20px 16px 16px; width:100%; max-width:420px; padding:28px 24px 24px; animation:slideUp 0.25s ease; display:flex; flex-direction:column; max-height:82vh; }
+  @keyframes slideUp { from { transform:translateY(40px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+  .modal-title { font-size:18px; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:10px; flex-shrink:0; }
+  .modal-title .dot { width:10px; height:10px; border-radius:50%; background:var(--accent); flex-shrink:0; }
+  .modal-title .dot.rto { background:var(--accent2); }
 
-  /* Scan line animation */
-  .scan-line {
-    position: absolute;
-    left: 4px; right: 4px;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-    top: 0;
-    animation: scanline 2s ease-in-out infinite;
-    border-radius: 2px;
-  }
-  @keyframes scanline {
-    0%   { top: 8px; opacity: 1; }
-    45%  { top: calc(100% - 8px); opacity: 1; }
-    50%  { top: calc(100% - 8px); opacity: 0; }
-    55%  { top: 8px; opacity: 0; }
-    60%  { top: 8px; opacity: 1; }
-    100% { top: 8px; opacity: 1; }
-  }
-  .scan-line.rto {
-    background: linear-gradient(90deg, transparent, var(--accent2), transparent);
-  }
+  .report-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:16px; flex-shrink:0; }
+  .stat-box { background:var(--surface2); border-radius:10px; padding:12px 8px; text-align:center; }
+  .stat-value { font-family:'DM Mono',monospace; font-size:26px; font-weight:600; line-height:1; }
+  .stat-label { font-size:10px; color:var(--text2); margin-top:4px; text-transform:uppercase; letter-spacing:0.5px; }
 
-  /* Flash overlay */
-  .flash-overlay {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(240,192,64,0.25);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.05s ease;
-  }
-  .flash-overlay.rto { background: rgba(232,112,64,0.25); }
-  .flash-overlay.flash { opacity: 1; }
+  .scan-list-title { font-size:12px; color:var(--text2); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; flex-shrink:0; }
+  .scan-list { overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
+  .scan-list-item { display:flex; align-items:center; justify-content:space-between; background:var(--surface2); border-radius:8px; padding:10px 14px; }
+  .scan-item-num { font-family:'DM Mono',monospace; font-size:15px; font-weight:600; }
+  .scan-item-badge { font-size:11px; padding:3px 10px; border-radius:100px; font-weight:600; }
+  .scan-item-badge.cod { background:rgba(240,192,64,0.15); color:var(--accent); }
+  .scan-item-badge.prepaid { background:rgba(64,192,112,0.15); color:var(--green); }
+  .scan-item-badge.error { background:rgba(224,64,64,0.15); color:var(--red); font-size:10px; }
 
-  .scanner-bottom {
-    pointer-events: all;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-  }
-  .scanner-hint {
-    color: rgba(255,255,255,0.5);
-    font-size: 13px;
-    text-align: center;
-  }
-  .done-btn {
-    width: 100%;
-    max-width: 320px;
-    background: rgba(0,0,0,0.75);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255,255,255,0.15);
-    color: #fff;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 16px;
-    font-weight: 600;
-    padding: 16px;
-    border-radius: var(--radius);
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .done-btn:active { background: rgba(255,255,255,0.12); }
+  .modal-ok-btn { width:100%; background:var(--accent); color:#000; font-family:'DM Sans',sans-serif; font-size:16px; font-weight:700; padding:16px; border-radius:12px; border:none; cursor:pointer; flex-shrink:0; }
+  .modal-ok-btn:active { opacity:0.8; }
+  .modal-ok-btn.rto { background:var(--accent2); color:#fff; }
 
-  /* ---- REPORT MODAL ---- */
-  .modal-backdrop {
-    display: none;
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.75);
-    backdrop-filter: blur(4px);
-    z-index: 100;
-    align-items: flex-end;
-    justify-content: center;
-    padding: 0 0 24px;
-  }
-  .modal-backdrop.open { display: flex; }
-  .modal {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 20px 20px 16px 16px;
-    width: 100%;
-    max-width: 420px;
-    padding: 28px 24px 24px;
-    animation: slideUp 0.25s ease;
-  }
-  @keyframes slideUp {
-    from { transform: translateY(40px); opacity: 0; }
-    to   { transform: translateY(0); opacity: 1; }
-  }
-  .modal-title {
-    font-size: 18px;
-    font-weight: 700;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .modal-title .dot {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    background: var(--accent);
-    flex-shrink: 0;
-  }
-  .modal-title .dot.rto { background: var(--accent2); }
-
-  .report-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 14px 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .report-row:last-of-type { border-bottom: none; }
-  .report-label {
-    color: var(--text2);
-    font-size: 14px;
-  }
-  .report-value {
-    font-family: 'DM Mono', monospace;
-    font-size: 22px;
-    font-weight: 600;
-    color: var(--text);
-  }
-  .report-value.highlight { color: var(--accent); }
-
-  .modal-ok-btn {
-    width: 100%;
-    background: var(--accent);
-    color: #000;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 16px;
-    font-weight: 700;
-    padding: 16px;
-    border-radius: 12px;
-    border: none;
-    cursor: pointer;
-    margin-top: 20px;
-    transition: opacity 0.15s;
-  }
-  .modal-ok-btn:active { opacity: 0.8; }
-  .modal-ok-btn.rto {
-    background: var(--accent2);
-    color: #fff;
-  }
-
-  /* ---- TOAST ---- */
-  .toast {
-    position: fixed;
-    bottom: 32px;
-    left: 50%;
-    transform: translateX(-50%) translateY(20px);
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 10px 20px;
-    border-radius: 100px;
-    font-size: 13px;
-    opacity: 0;
-    transition: all 0.2s ease;
-    z-index: 200;
-    white-space: nowrap;
-  }
-  .toast.show {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
+  /* TOAST */
+  .toast { position:fixed; bottom:32px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:10px 20px; border-radius:100px; font-size:13px; opacity:0; transition:all 0.2s; z-index:200; white-space:nowrap; pointer-events:none; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
 
-<!-- LOADING -->
 <div id="screen-loading" class="screen active">
   <div class="logo">Kaidoo <span>Scanner</span></div>
   <div class="spinner"></div>
   <div class="loading-text">Checking device...</div>
 </div>
 
-<!-- WAITING FOR ACTIVATION -->
 <div id="screen-waiting" class="screen">
   <div class="status-icon">⏳</div>
   <div class="status-title">Pending Activation</div>
-  <div class="status-sub">This device has been registered. Ask your admin to activate it in the Device Registry sheet.</div>
+  <div class="status-sub">Registered. Ask your admin to activate this device in the Device Registry sheet.</div>
   <div class="device-id-box" id="waiting-device-id"></div>
   <button class="retry-btn" onclick="init()">Check Again</button>
 </div>
 
-<!-- BLOCKED -->
 <div id="screen-blocked" class="screen">
   <div class="status-icon">🚫</div>
   <div class="status-title">Access Blocked</div>
@@ -459,22 +149,18 @@
   <div class="device-id-box" id="blocked-device-id"></div>
 </div>
 
-<!-- HOME -->
 <div id="screen-home" class="screen">
   <div class="home-header">
     <div class="logo">Kaidoo <span>Scanner</span></div>
     <div class="home-greeting">Select an operation</div>
     <div class="home-device" id="home-device-label"></div>
   </div>
-  <div class="home-grid" id="home-grid">
-    <!-- Buttons injected by JS based on permissions -->
-  </div>
+  <div class="home-grid" id="home-grid"></div>
 </div>
 
-<!-- SCANNER -->
 <div id="screen-scanner" class="screen">
   <video id="video" playsinline autoplay muted></video>
-  <canvas id="canvas" style="display:none"></canvas>
+  <canvas id="canvas"></canvas>
   <div class="flash-overlay" id="flash-overlay"></div>
   <div class="scanner-overlay">
     <div class="scanner-top">
@@ -486,302 +172,264 @@
       <div class="scan-line" id="scan-line"></div>
     </div>
     <div class="scanner-bottom">
-      <div class="scanner-hint">Point camera at order QR code</div>
-      <button class="done-btn" id="done-btn" onclick="stopScanner()">Done</button>
+      <div class="scanner-hint">Point at the Order Id barcode (bottom barcode)</div>
+      <div class="last-scan-pill" id="last-scan-pill">
+        <span style="color:var(--text2);font-size:13px">Ready to scan</span>
+      </div>
+      <button class="done-btn" onclick="stopScanner()">Done</button>
     </div>
   </div>
 </div>
 
-<!-- REPORT MODAL -->
 <div class="modal-backdrop" id="report-modal">
   <div class="modal">
     <div class="modal-title">
       <div class="dot" id="modal-dot"></div>
       <span id="modal-title-text">Dispatch Report</span>
     </div>
-    <div class="report-row">
-      <div class="report-label">Total scanned</div>
-      <div class="report-value highlight" id="report-total">0</div>
+    <div class="report-stats">
+      <div class="stat-box"><div class="stat-value" id="report-total" style="color:var(--accent)">0</div><div class="stat-label">Total</div></div>
+      <div class="stat-box"><div class="stat-value" id="report-prepaid" style="color:var(--green)">0</div><div class="stat-label">Prepaid</div></div>
+      <div class="stat-box"><div class="stat-value" id="report-cod" style="color:var(--accent)">0</div><div class="stat-label">COD</div></div>
+      <div class="stat-box"><div class="stat-value" id="report-errors" style="color:var(--red)">0</div><div class="stat-label">Errors</div></div>
     </div>
-    <div class="report-row">
-      <div class="report-label">Prepaid orders</div>
-      <div class="report-value" id="report-prepaid">0</div>
-    </div>
-    <div class="report-row">
-      <div class="report-label">COD orders</div>
-      <div class="report-value" id="report-cod">0</div>
-    </div>
+    <div class="scan-list-title">Scanned Orders</div>
+    <div class="scan-list" id="scan-list"></div>
     <button class="modal-ok-btn" id="modal-ok-btn" onclick="closeReport()">OK</button>
   </div>
 </div>
 
-<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<!-- JSQR for QR scanning -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js"></script>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.21.3/umd/index.min.js"></script>
 <script>
-// ---- STATE ----
 const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbyJvs63tDwTSc3P3ub37ZsZRDgOIYDodkR3pN5UkWjLbTWlvZtJ6W8a2JT1AvvxDIYj/exec';
-[0]; // Same Apps Script URL
-let deviceId = null;
-let deviceName = '';
-let permissions = { dispatch: false, rto: false };
-let currentMode = null; // 'dispatch' or 'rto'
-let scanSession = [];   // [{orderId, orderType}]
-let scanActive = false;
-let videoStream = null;
-let scanInterval = null;
-let ding = null;
 
-// ---- INIT ----
-window.addEventListener('load', () => {
-  buildDing();
-  init();
-});
+// Order number: purely numeric, 3-6 digits
+// AWB numbers are 15+ digits — automatically rejected
+const ORDER_NUM_REGEX = /^\d{3,6}$/;
+
+// QR_SCAN_ENABLED = false
+// To re-enable QR scanning in future, set to true and handle kk.app URLs in handleRawScan()
+const QR_SCAN_ENABLED = false;
+
+const SCAN_DEBOUNCE_MS = 2000;
+
+let deviceId    = null;
+let deviceName  = '';
+let permissions = { dispatch: false, rto: false };
+let currentMode = null;
+let scanSession = [];
+let scanActive  = false;
+let videoStream = null;
+let codeReader  = null;
+let ding = null, errorSnd = null;
+let lastRaw = '', lastRawTime = 0;
+
+window.addEventListener('load', () => { buildSounds(); init(); });
 
 async function init() {
   showScreen('loading');
   deviceId = getDeviceId();
   document.getElementById('waiting-device-id').textContent = deviceId;
   document.getElementById('blocked-device-id').textContent = deviceId;
-
   try {
     const res = await apiCall({ action: 'checkDevice', deviceId });
-
-    if (!res.found) {
-      // Auto-register
-      await apiCall({ action: 'registerDevice', deviceId });
-      showScreen('waiting');
-      return;
-    }
-
-    if (!res.active) {
-      // Registered but not yet activated
-      showScreen('waiting');
-      return;
-    }
-
-    // Active — check if blocked
-    deviceName = res.name || deviceId.slice(0, 8);
+    if (!res.found) { await apiCall({ action: 'registerDevice', deviceId }); showScreen('waiting'); return; }
+    if (!res.active) { showScreen('waiting'); return; }
+    deviceName  = res.name || deviceId.slice(0, 8);
     permissions = res.permissions || { dispatch: false, rto: false };
     buildHomeGrid();
     showScreen('home');
-
-  } catch (err) {
-    showToast('Connection error — retrying...');
-    setTimeout(init, 3000);
-  }
+  } catch(err) { showToast('Connection error — retrying...'); setTimeout(init, 3000); }
 }
 
-// ---- DEVICE ID ----
 function getDeviceId() {
   let id = localStorage.getItem('kaidoo_device_id');
-  if (!id) {
-    id = 'kd-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
-    localStorage.setItem('kaidoo_device_id', id);
-  }
+  if (!id) { id = 'kd-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8); localStorage.setItem('kaidoo_device_id', id); }
   return id;
 }
 
-// ---- HOME GRID ----
 function buildHomeGrid() {
   const grid = document.getElementById('home-grid');
   grid.innerHTML = '';
   document.getElementById('home-device-label').textContent = deviceName;
-
-  const buttons = [
-    { id: 'dispatch', label: 'DISPATCH', sub: 'Mark orders as dispatched', icon: '📦', perm: permissions.dispatch },
-    { id: 'rto',      label: 'RTO',      sub: 'Record returned orders',    icon: '↩️', perm: permissions.rto }
+  const btns = [
+    { id:'dispatch', label:'DISPATCH', sub:'Mark orders as dispatched', icon:'📦', perm:permissions.dispatch },
+    { id:'rto',      label:'RTO',      sub:'Record returned orders',    icon:'↩️',  perm:permissions.rto }
   ];
-
-  buttons.forEach(btn => {
-    if (!btn.perm) return;
+  btns.forEach(b => {
+    if (!b.perm) return;
     const el = document.createElement('div');
-    el.className = 'action-btn ' + btn.id;
-    el.innerHTML = `
-      <div class="btn-icon">${btn.icon}</div>
-      <div class="btn-label">${btn.label}</div>
-      <div class="btn-sub">${btn.sub}</div>
-    `;
-    el.addEventListener('click', () => startScanner(btn.id));
+    el.className = 'action-btn ' + b.id;
+    el.innerHTML = `<div class="btn-icon">${b.icon}</div><div class="btn-label">${b.label}</div><div class="btn-sub">${b.sub}</div>`;
+    el.addEventListener('click', () => startScanner(b.id));
     grid.appendChild(el);
   });
-
-  if (grid.children.length === 0) {
-    grid.innerHTML = '<div style="grid-column:1/-1;color:var(--text2);font-size:14px;text-align:center;padding:40px 0">No operations assigned to this device.<br>Contact your admin.</div>';
-  }
+  if (!grid.children.length) grid.innerHTML = '<div style="grid-column:1/-1;color:var(--text2);font-size:14px;text-align:center;padding:40px 0">No operations assigned.<br>Contact your admin.</div>';
 }
 
-// ---- SCANNER ----
 async function startScanner(mode) {
-  currentMode = mode;
-  scanSession = [];
+  currentMode = mode; scanSession = []; lastRaw = '';
   document.getElementById('scan-count').textContent = '0';
-
+  document.getElementById('last-scan-pill').innerHTML = '<span style="color:var(--text2);font-size:13px">Ready to scan</span>';
   const pill = document.getElementById('scanner-mode-pill');
   pill.textContent = mode === 'dispatch' ? 'DISPATCH' : 'RTO';
-  pill.className = 'scanner-mode-pill ' + mode;
-
+  pill.className   = 'scanner-mode-pill ' + mode;
   document.getElementById('scan-line').className = 'scan-line ' + mode;
-  document.getElementById('flash-overlay').className = 'flash-overlay ' + mode;
-
   showScreen('scanner');
-
   try {
-    videoStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-    });
+    videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'environment', width:{ideal:1280}, height:{ideal:720} } });
     const video = document.getElementById('video');
     video.srcObject = videoStream;
     await video.play();
+    codeReader = new ZXing.BrowserMultiFormatReader();
+    codeReader.decodeFromVideoElement(video, (result, err) => { if (result) handleRawScan(result.getText()); });
     scanActive = true;
-    requestAnimationFrame(scanFrame);
-  } catch (err) {
-    showToast('Camera error: ' + err.message);
-    showScreen('home');
-  }
+  } catch(err) { showToast('Camera error: ' + err.message); showScreen('home'); }
 }
 
-function scanFrame() {
-  if (!scanActive) return;
+function handleRawScan(raw) {
+  if (!raw || !scanActive) return;
+  const now = Date.now();
+  if (raw === lastRaw && (now - lastRawTime) < SCAN_DEBOUNCE_MS) return;
+  lastRaw = raw; lastRawTime = now;
 
-  const video = document.getElementById('video');
-  const canvas = document.getElementById('canvas');
+  // QR placeholder — uncomment when re-enabling
+  // if (QR_SCAN_ENABLED && raw.startsWith('https://kk.app/e/order/')) { handleQrScan(raw); return; }
 
-  if (video.readyState === video.HAVE_ENOUGH_DATA) {
-    canvas.width  = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
-
-    if (code) {
-      handleScan(code.data);
-    }
-  }
-
-  requestAnimationFrame(scanFrame);
+  const trimmed = raw.trim();
+  if (!ORDER_NUM_REGEX.test(trimmed)) return; // not an order number — silent skip
+  if (scanSession.find(s => s.orderNum === trimmed)) return; // duplicate — silent skip
+  processScan(trimmed);
 }
 
-function handleScan(raw) {
-  // Parse: https://kk.app/e/order/{orderId}_{orderType}
-  const match = raw.match(/https:\/\/kk\.app\/e\/order\/([^_]+)_(\w+)/);
-  if (!match) return; // Not a valid Kaidoo order QR — silent skip
-
-  const orderId   = match[1];
-  const orderType = match[2]; // 'cod' or 'prepaid'
-
-  // Duplicate check — silent skip
-  if (scanSession.find(s => s.orderId === orderId)) return;
-
-  // Add to session immediately (optimistic)
-  scanSession.push({ orderId, orderType });
+async function processScan(orderNum) {
+  const entry = { orderNum, paymentType:'...', status:'pending', error:null };
+  scanSession.push(entry);
   document.getElementById('scan-count').textContent = scanSession.length;
-
-  // Visual + audio feedback
-  flashScreen();
-  playDing();
-
-  // Tag on Shopify (fire and forget — don't block scanning)
   const today = getTodayTag();
-  apiCall({ action: 'tagOrder', orderId, mode: currentMode, date: today })
-    .catch(() => {
-      // Silent fail for now — could add a retry queue later
-    });
+  try {
+    const res = await apiCall({ action:'scanOrder', orderNum, mode:currentMode, date:today });
+    if (res.error) {
+      entry.status = 'error'; entry.paymentType = 'error'; entry.error = res.error;
+      flash('error'); playError(); showLastScan(orderNum, 'error', res.error);
+    } else {
+      entry.status = 'success'; entry.paymentType = res.paymentType || 'Unknown';
+      flash(currentMode); playDing(); showLastScan(orderNum, res.paymentType, null);
+    }
+  } catch(err) {
+    entry.status = 'error'; entry.paymentType = 'error'; entry.error = 'Network error';
+    flash('error'); playError(); showLastScan(orderNum, 'error', 'Network error');
+  }
+}
+
+function showLastScan(orderNum, paymentType, errMsg) {
+  const pill = document.getElementById('last-scan-pill');
+  if (errMsg) {
+    pill.innerHTML = `<span class="order-num">#${orderNum}</span><span class="pay-badge error">Not found</span>`;
+  } else {
+    const isCod = (paymentType||'').toLowerCase().includes('cod');
+    pill.innerHTML = `<span class="order-num">#${orderNum}</span><span class="pay-badge ${isCod?'cod':'prepaid'}">${isCod?'COD':'Prepaid'}</span>`;
+  }
 }
 
 function stopScanner() {
   scanActive = false;
-
-  if (videoStream) {
-    videoStream.getTracks().forEach(t => t.stop());
-    videoStream = null;
-  }
-
-  showReport();
+  if (codeReader) { try { codeReader.reset(); } catch(e){} codeReader = null; }
+  if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
+  setTimeout(showReport, 400);
 }
 
-// ---- REPORT ----
 function showReport() {
   const total   = scanSession.length;
-  const prepaid = scanSession.filter(s => s.orderType === 'prepaid').length;
-  const cod     = scanSession.filter(s => s.orderType === 'cod').length;
+  const prepaid = scanSession.filter(s => (s.paymentType||'').toLowerCase().includes('prepaid')).length;
+  const cod     = scanSession.filter(s => (s.paymentType||'').toLowerCase().includes('cod')).length;
+  const errors  = scanSession.filter(s => s.status === 'error').length;
   const isRto   = currentMode === 'rto';
 
   document.getElementById('report-total').textContent   = total;
   document.getElementById('report-prepaid').textContent = prepaid;
   document.getElementById('report-cod').textContent     = cod;
+  document.getElementById('report-errors').textContent  = errors;
   document.getElementById('modal-title-text').textContent = isRto ? 'RTO Report' : 'Dispatch Report';
-  document.getElementById('modal-dot').className = 'dot' + (isRto ? ' rto' : '');
-  document.getElementById('modal-ok-btn').className = 'modal-ok-btn' + (isRto ? ' rto' : '');
+  document.getElementById('modal-dot').className        = 'dot' + (isRto ? ' rto' : '');
+  document.getElementById('modal-ok-btn').className     = 'modal-ok-btn' + (isRto ? ' rto' : '');
 
+  const list = document.getElementById('scan-list');
+  list.innerHTML = '';
+  if (!scanSession.length) {
+    list.innerHTML = '<div style="color:var(--text2);font-size:14px;text-align:center;padding:16px">No orders scanned</div>';
+  } else {
+    scanSession.forEach(s => {
+      const isErr = s.status === 'error';
+      const isCod = (s.paymentType||'').toLowerCase().includes('cod');
+      const cls   = isErr ? 'error' : (isCod ? 'cod' : 'prepaid');
+      const lbl   = isErr ? (s.error || 'Error') : (isCod ? 'COD' : 'Prepaid');
+      const el = document.createElement('div');
+      el.className = 'scan-list-item';
+      el.innerHTML = `<span class="scan-item-num">#${s.orderNum}</span><span class="scan-item-badge ${cls}">${lbl}</span>`;
+      list.appendChild(el);
+    });
+  }
   document.getElementById('report-modal').classList.add('open');
 }
 
-function closeReport() {
-  document.getElementById('report-modal').classList.remove('open');
-  showScreen('home');
-}
+function closeReport() { document.getElementById('report-modal').classList.remove('open'); showScreen('home'); }
 
-// ---- HELPERS ----
-function showScreen(name) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-' + name).classList.add('active');
-}
+function showScreen(name) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById('screen-' + name).classList.add('active'); }
 
 function getTodayTag() {
   const d = new Date();
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const yy = String(d.getFullYear()).slice(2);
-  return dd + '-' + mm + '-' + yy;
+  return d.getDate() + '-' + (d.getMonth()+1) + '-' + String(d.getFullYear()).slice(2);
 }
 
-function flashScreen() {
-  const overlay = document.getElementById('flash-overlay');
-  overlay.classList.add('flash');
-  setTimeout(() => overlay.classList.remove('flash'), 150);
+function flash(type) {
+  const o = document.getElementById('flash-overlay');
+  o.className = 'flash-overlay ' + type + '-flash active';
+  setTimeout(() => o.classList.remove('active'), 150);
 }
 
-function buildDing() {
+function buildSounds() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     ding = () => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.05);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.3);
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.setValueAtTime(880, ctx.currentTime);
+      o.frequency.setValueAtTime(1100, ctx.currentTime + 0.06);
+      g.gain.setValueAtTime(0.3, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+      o.start(ctx.currentTime); o.stop(ctx.currentTime + 0.35);
     };
-  } catch(e) { ding = () => {}; }
+    errorSnd = () => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.setValueAtTime(300, ctx.currentTime);
+      o.frequency.setValueAtTime(180, ctx.currentTime + 0.1);
+      g.gain.setValueAtTime(0.25, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      o.start(ctx.currentTime); o.stop(ctx.currentTime + 0.3);
+    };
+  } catch(e) { ding = errorSnd = () => {}; }
 }
 
-function playDing() {
-  if (ding) ding();
-}
+function playDing()  { if (ding) ding(); }
+function playError() { if (errorSnd) errorSnd(); }
 
 function showToast(msg) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
+  t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
 async function apiCall(params) {
-  const url = BACKEND_URL + '?' + Object.entries(params).map(([k,v]) => k + '=' + encodeURIComponent(v)).join('&');
-  const res = await fetch(url);
+  const qs = Object.entries(params).map(([k,v]) => encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+  const res = await fetch(BACKEND_URL + '?' + qs, { method:'GET', redirect:'follow' });
   if (!res.ok) throw new Error('HTTP ' + res.status);
-  return res.json();
+  const text = await res.text();
+  try { return JSON.parse(text); } catch(e) { throw new Error('Bad response: ' + text.slice(0,80)); }
 }
 </script>
-
 </body>
 </html>
