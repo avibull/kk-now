@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Kaidoo Scanner Debug</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:monospace; background:#000; color:#0f0; font-size:12px; }
+  #video { width:100vw; height:50vh; object-fit:cover; display:block; }
+  #canvas { display:none; }
+  #log { padding:8px; height:50vh; overflow-y:auto; }
+  .log-entry { padding:4px 0; border-bottom:1px solid #1a1a1a; word-break:break-all; }
+  .log-entry.hit { color:#ff0; font-weight:bold; font-size:14px; }
+  .log-entry.info { color:#888; }
+  .log-entry.err { color:#f44; }
+  #status { position:fixed; top:4px; left:4px; background:rgba(0,0,0,0.8); padding:4px 8px; font-size:11px; color:#0f0; border-radius:4px; }
+</style>
+</head>
+<body>
+<video id="video" playsinline autoplay muted></video>
+<canvas id="canvas"></canvas>
+<div id="status">Loading...</div>
+<div id="log"></div>
+
+<script>
+let logEl     = document.getElementById('log');
+let statusEl  = document.getElementById('status');
+let frameCount = 0;
+let hitCount   = 0;
+
+function log(msg, type) {
+  const d = document.createElement('div');
+  d.className = 'log-entry ' + (type||'info');
+  d.textContent = new Date().toLocaleTimeString() + ' | ' + msg;
+  logEl.insertBefore(d, logEl.firstChild);
+  // Keep last 50 entries
+  while (logEl.children.length > 50) logEl.removeChild(logEl.lastChild);
+}
+
+// ---- LOAD ZXING ----
+log('Loading ZXing...', 'info');
+const s = document.createElement('script');
+s.src = 'https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js';
+s.onload = () => {
+  log('ZXing loaded OK', 'info');
+  startCamera();
+};
+s.onerror = () => {
+  log('ZXing FAILED to load — trying native', 'err');
+  startCameraNative();
+};
+setTimeout(() => {
+  if (!window.ZXing) {
+    log('ZXing timeout — trying native', 'err');
+    startCameraNative();
+  }
+}, 5000);
+document.head.appendChild(s);
+
+// ---- START CAMERA WITH ZXING ----
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode:'environment', width:{ideal:1920}, height:{ideal:1080} }
+    });
+    const video = document.getElementById('video');
+    video.srcObject = stream;
+    await video.play();
+
+    const reader = new ZXing.BrowserMultiFormatReader();
+    log('Camera started — using ZXing', 'info');
+    statusEl.textContent = 'ZXing | frames:0 hits:0';
+
+    reader.decodeFromVideoElement(video, (result, err) => {
+      frameCount++;
+      if (result) {
+        hitCount++;
+        const txt = result.getText();
+        const fmt = result.getBarcodeFormat();
+        log('HIT [' + fmt + ']: ' + txt, 'hit');
+        statusEl.textContent = 'ZXing | frames:' + frameCount + ' hits:' + hitCount;
+      }
+      if (frameCount % 30 === 0) {
+        statusEl.textContent = 'ZXing | frames:' + frameCount + ' hits:' + hitCount;
+      }
+    });
+  } catch(e) {
+    log('Camera error: ' + e.message, 'err');
+  }
+}
+
+// ---- START CAMERA WITH NATIVE BARCODE DETECTOR ----
+async function startCameraNative() {
+  if (!('BarcodeDetector' in window)) {
+    log('BarcodeDetector NOT supported on this device', 'err');
+    return;
+  }
+
+  try {
+    const formats = await BarcodeDetector.getSupportedFormats();
+    log('BarcodeDetector supported formats: ' + formats.join(', '), 'info');
+
+    const detector = new BarcodeDetector({ formats });
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode:'environment', width:{ideal:1920}, height:{ideal:1080} }
+    });
+    const video = document.getElementById('video');
+    video.srcObject = stream;
+    await video.play();
+    log('Camera started — using native BarcodeDetector', 'info');
+    statusEl.textContent = 'Native | frames:0 hits:0';
+
+    async function loop() {
+      frameCount++;
+      try {
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+          const barcodes = await detector.detect(video);
+          if (barcodes.length > 0) {
+            for (const b of barcodes) {
+              hitCount++;
+              log('HIT [' + b.format + ']: ' + b.rawValue, 'hit');
+            }
+          }
+        }
+      } catch(e) {
+        if (frameCount < 5) log('Detect error: ' + e.message, 'err');
+      }
+      if (frameCount % 30 === 0) {
+        statusEl.textContent = 'Native | frames:' + frameCount + ' hits:' + hitCount;
+      }
+      setTimeout(loop, 100);
+    }
+    loop();
+  } catch(e) {
+    log('Native camera error: ' + e.message, 'err');
+  }
+}
+</script>
+</body>
+</html>
