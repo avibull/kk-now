@@ -3,157 +3,100 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Kaidoo Scanner Debug v4</title>
+<title>Kaidoo Debug v6 - Native</title>
 <style>
   * { box-sizing:border-box; margin:0; padding:0; }
-  body { font-family:monospace; background:#000; color:#0f0; font-size:13px; }
-  #video { width:100vw; height:50vh; object-fit:cover; display:block; }
-  #snap-btn { width:100%; padding:16px; background:#f0c040; color:#000; font-size:18px; font-weight:bold; border:none; cursor:pointer; }
-  #log { padding:8px; height:calc(50vh - 56px); overflow-y:auto; }
-  .log-entry { padding:4px 0; border-bottom:1px solid #1a1a1a; word-break:break-all; }
-  .hit  { color:#ff0; font-weight:bold; font-size:15px; }
-  .info { color:#888; }
-  .err  { color:#f44; }
+  body { font-family:monospace; background:#000; color:#0f0; font-size:13px; display:flex; flex-direction:column; height:100vh; height:100dvh; }
+  #video { width:100vw; height:50vh; object-fit:cover; display:block; flex-shrink:0; }
+  #status { background:#111; padding:8px 12px; font-size:12px; color:#0f0; flex-shrink:0; border-bottom:1px solid #222; }
+  #log { padding:8px; flex:1; overflow-y:auto; }
+  .hit  { color:#ff0; font-weight:bold; font-size:15px; padding:6px 0; border-bottom:1px solid #333; word-break:break-all; }
+  .info { color:#888; padding:3px 0; border-bottom:1px solid #111; }
+  .err  { color:#f44; padding:3px 0; border-bottom:1px solid #111; }
 </style>
 </head>
 <body>
 <video id="video" playsinline autoplay muted></video>
-<button id="snap-btn" onclick="snap()">TAP TO SCAN</button>
+<div id="status">Starting...</div>
 <div id="log"></div>
-
 <script>
-const logEl = document.getElementById('log');
+const logEl    = document.getElementById('log');
+const statusEl = document.getElementById('status');
+let frames = 0, hits = 0, detecting = false;
 
 function log(msg, type) {
   const d = document.createElement('div');
-  d.className = 'log-entry ' + (type||'info');
+  d.className = type || 'info';
   d.textContent = new Date().toLocaleTimeString() + ' | ' + msg;
   logEl.insertBefore(d, logEl.firstChild);
+  while (logEl.children.length > 80) logEl.removeChild(logEl.lastChild);
 }
 
-// Load ZXing
-log('Loading ZXing...', 'info');
-const s = document.createElement('script');
-s.src = 'https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js';
-s.onload = () => { log('ZXing ready', 'info'); startCamera(); };
-s.onerror = () => log('ZXing failed to load', 'err');
-document.head.appendChild(s);
+async function start() {
+  // Check support
+  if (!('BarcodeDetector' in window)) {
+    log('BarcodeDetector NOT supported on this browser', 'err');
+    statusEl.textContent = 'ERROR: Not supported';
+    return;
+  }
 
-async function startCamera() {
+  // Get ALL supported formats
+  const supported = await BarcodeDetector.getSupportedFormats();
+  log('Supported formats (' + supported.length + '): ' + supported.join(', '), 'info');
+
+  // Use ALL formats
+  const detector = new BarcodeDetector({ formats: supported });
+
+  // Start camera — try landscape first for better barcode scanning
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode:'environment', width:{ideal:1920}, height:{ideal:1080} }
+      video: {
+        facingMode: 'environment',
+        width:  { ideal: 1920 },
+        height: { ideal: 1080 }
+      }
     });
-    document.getElementById('video').srcObject = stream;
-    await document.getElementById('video').play();
-    log('Camera ready — tap button to scan', 'info');
+    const video = document.getElementById('video');
+    video.srcObject = stream;
+    await video.play();
+
+    video.addEventListener('loadedmetadata', () => {
+      log('Camera: ' + video.videoWidth + 'x' + video.videoHeight, 'info');
+    });
+
+    log('Running — point at barcode', 'info');
+
+    // Run detection as fast as possible — no sleep, back to back
+    async function loop() {
+      if (video.readyState === video.HAVE_ENOUGH_DATA && !detecting) {
+        detecting = true;
+        frames++;
+        statusEl.textContent = 'frames:' + frames + ' | hits:' + hits + ' | scanning...';
+        try {
+          const results = await detector.detect(video);
+          if (results.length > 0) {
+            for (const r of results) {
+              hits++;
+              log('✅ [' + r.format + '] ' + r.rawValue, 'hit');
+              statusEl.textContent = 'HIT! frames:' + frames + ' hits:' + hits;
+            }
+          }
+        } catch(e) {
+          if (frames < 5) log('detect error: ' + e.message, 'err');
+        }
+        detecting = false;
+      }
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
   } catch(e) {
     log('Camera error: ' + e.message, 'err');
+    statusEl.textContent = 'Camera error: ' + e.message;
   }
 }
 
-async function snap() {
-  const video  = document.getElementById('video');
-  const btn    = document.getElementById('snap-btn');
-  btn.textContent = 'Processing...';
-  btn.disabled = true;
-
-  try {
-    // Capture frame to canvas
-    const canvas = document.createElement('canvas');
-    canvas.width  = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0);
-
-    log('Captured: ' + canvas.width + 'x' + canvas.height, 'info');
-
-    // Convert canvas to blob then to data URL
-    // Feed to ZXing as an image element — same as zxing.org demo
-    canvas.toBlob(async (blob) => {
-      try {
-        const url = URL.createObjectURL(blob);
-        const img = new Image();
-        img.onload = async () => {
-          try {
-            // Draw to a fresh canvas for ZXing
-            const c2  = document.createElement('canvas');
-            c2.width  = img.width;
-            c2.height = img.height;
-            const cx  = c2.getContext('2d');
-            cx.drawImage(img, 0, 0);
-            const imgData = cx.getImageData(0, 0, c2.width, c2.height);
-
-            const hints = new Map();
-            hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-            hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-              ZXing.BarcodeFormat.CODE_128,
-              ZXing.BarcodeFormat.CODE_39,
-              ZXing.BarcodeFormat.EAN_13,
-              ZXing.BarcodeFormat.EAN_8,
-              ZXing.BarcodeFormat.QR_CODE,
-              ZXing.BarcodeFormat.ITF,
-              ZXing.BarcodeFormat.CODABAR
-            ]);
-
-            const reader  = new ZXing.MultiFormatReader();
-            reader.setHints(hints);
-
-            const lum    = new ZXing.RGBLuminanceSource(imgData.data, imgData.width, imgData.height);
-            const binary = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
-            const result = reader.decode(binary);
-
-            log('✅ HIT: ' + result.getText(), 'hit');
-            URL.revokeObjectURL(url);
-          } catch(e) {
-            log('No barcode found: ' + e.name, 'err');
-
-            // Try inverted image as fallback
-            try {
-              const c3  = document.createElement('canvas');
-              c3.width  = img.width;
-              c3.height = img.height;
-              const cx3 = c3.getContext('2d');
-              cx3.drawImage(img, 0, 0);
-              const id3 = cx3.getImageData(0, 0, c3.width, c3.height);
-              // Invert pixels
-              for (let i = 0; i < id3.data.length; i += 4) {
-                id3.data[i]   = 255 - id3.data[i];
-                id3.data[i+1] = 255 - id3.data[i+1];
-                id3.data[i+2] = 255 - id3.data[i+2];
-              }
-              cx3.putImageData(id3, 0, 0);
-
-              const hints2 = new Map();
-              hints2.set(ZXing.DecodeHintType.TRY_HARDER, true);
-              const reader2  = new ZXing.MultiFormatReader();
-              reader2.setHints(hints2);
-              const lum2    = new ZXing.RGBLuminanceSource(id3.data, c3.width, c3.height);
-              const binary2 = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum2));
-              const result2 = reader2.decode(binary2);
-              log('✅ HIT (inverted): ' + result2.getText(), 'hit');
-            } catch(e2) {
-              log('Inverted also failed: ' + e2.name, 'err');
-            }
-            URL.revokeObjectURL(url);
-          }
-          btn.textContent = 'TAP TO SCAN';
-          btn.disabled = false;
-        };
-        img.src = url;
-      } catch(e) {
-        log('Blob error: ' + e.message, 'err');
-        btn.textContent = 'TAP TO SCAN';
-        btn.disabled = false;
-      }
-    }, 'image/jpeg', 0.95);
-
-  } catch(e) {
-    log('Snap error: ' + e.message, 'err');
-    btn.textContent = 'TAP TO SCAN';
-    btn.disabled = false;
-  }
-}
+start();
 </script>
 </body>
 </html>
