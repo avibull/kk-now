@@ -160,7 +160,10 @@
       <div class="last-scan-pill" id="last-scan-pill">
         <span style="color:var(--text2);font-size:13px">Ready to scan</span>
       </div>
-      <button class="done-btn" onclick="stopScanner()">Done</button>
+      <div style="display:flex;gap:12px;width:100%;max-width:320px;">
+        <button class="pause-btn" id="pause-btn" onclick="togglePause()" style="flex:1;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.15);color:#fff;font-family:DM Sans,sans-serif;font-size:15px;font-weight:600;padding:16px;border-radius:16px;cursor:pointer;">⏸ Pause</button>
+        <button class="done-btn" onclick="stopScanner()" style="flex:2;">Done</button>
+      </div>
     </div>
   </div>
 </div>
@@ -203,16 +206,21 @@ let permissions = { dispatch: false, rto: false };
 let currentMode = null;
 let scanSession = [];
 let scanActive  = false;
+let scanPaused  = false;
 let videoStream = null;
 let detector    = null;
 let detecting   = false;
-let ding = null, errorSnd = null;
 let lastRaw = '', lastRawTime = 0;
 
 // ============================================================
 // INIT
 // ============================================================
-window.addEventListener('load', () => { buildSounds(); init(); });
+window.addEventListener('load', () => {
+  buildSounds();
+  // Set initial history state
+  history.replaceState({ screen: 'loading' }, '', '');
+  init();
+});
 
 async function init() {
   showScreen('loading');
@@ -271,6 +279,7 @@ async function startScanner(mode) {
   scanSession = [];
   lastRaw     = '';
   detecting   = false;
+  scanPaused  = false;
   document.getElementById('scan-count').textContent = '0';
   document.getElementById('last-scan-pill').innerHTML = '<span style="color:var(--text2);font-size:13px">Ready to scan</span>';
 
@@ -278,6 +287,8 @@ async function startScanner(mode) {
   pill.textContent = mode === 'dispatch' ? 'DISPATCH' : 'RTO';
   pill.className   = 'scanner-mode-pill ' + mode;
   document.getElementById('scan-line').className = 'scan-line ' + mode;
+  const pauseBtn = document.getElementById('pause-btn');
+  if (pauseBtn) { pauseBtn.textContent = '⏸ Pause'; pauseBtn.style.color = '#fff'; }
   document.getElementById('scanner-hint').textContent = mode === 'dispatch'
     ? 'Point at the Order Id barcode (bottom)'
     : 'Point at the AWB barcode (top)';
@@ -331,7 +342,7 @@ async function scanLoop() {
 // HANDLE RAW SCAN
 // ============================================================
 function handleRawScan(raw) {
-  if (!raw || !scanActive) return;
+  if (!raw || !scanActive || scanPaused) return;
   const now = Date.now();
   if (raw === lastRaw && (now - lastRawTime) < SCAN_DEBOUNCE_MS) return;
   lastRaw = raw; lastRawTime = now;
@@ -442,10 +453,46 @@ function closeReport() {
 // ============================================================
 // UTILITIES
 // ============================================================
+function togglePause() {
+  scanPaused = !scanPaused;
+  const btn = document.getElementById('pause-btn');
+  if (scanPaused) {
+    btn.textContent = '▶ Resume';
+    btn.style.color = 'var(--accent)';
+  } else {
+    btn.textContent = '⏸ Pause';
+    btn.style.color = '#fff';
+  }
+}
+
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + name).classList.add('active');
+
+  // Push history state so back button is intercepted
+  if (name === 'scanner' || name === 'home') {
+    history.pushState({ screen: name }, '', '');
+  }
 }
+
+// Intercept Android back button
+window.addEventListener('popstate', (e) => {
+  const currentScreen = document.querySelector('.screen.active');
+  if (!currentScreen) return;
+  const id = currentScreen.id;
+
+  if (id === 'screen-scanner') {
+    // Back from scanner = stop and go home
+    stopScanner();
+    history.pushState({ screen: 'home' }, '', '');
+  } else if (id === 'screen-home') {
+    // Back from home = push state again to prevent exit
+    history.pushState({ screen: 'home' }, '', '');
+  } else {
+    // Any other screen = go home
+    showScreen('home');
+  }
+});
 
 function getTodayTag() {
   const d = new Date();
@@ -458,32 +505,50 @@ function flash(type) {
   setTimeout(() => o.classList.remove('active'), 150);
 }
 
+let audioCtx = null;
+
 function buildSounds() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    ding = () => {
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.connect(g); g.connect(ctx.destination);
-      o.frequency.setValueAtTime(880, ctx.currentTime);
-      o.frequency.setValueAtTime(1100, ctx.currentTime + 0.06);
-      g.gain.setValueAtTime(0.3, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-      o.start(ctx.currentTime); o.stop(ctx.currentTime + 0.35);
-    };
-    errorSnd = () => {
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.connect(g); g.connect(ctx.destination);
-      o.frequency.setValueAtTime(300, ctx.currentTime);
-      o.frequency.setValueAtTime(180, ctx.currentTime + 0.1);
-      g.gain.setValueAtTime(0.25, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-      o.start(ctx.currentTime); o.stop(ctx.currentTime + 0.3);
-    };
-  } catch(e) { ding = errorSnd = () => {}; }
+  // Audio context created on first user gesture to avoid autoplay block
 }
 
-function playDing()  { if (ding) ding(); }
-function playError() { if (errorSnd) errorSnd(); }
+function ensureAudio() {
+  if (!audioCtx) {
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch(e) { audioCtx = null; }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+
+function playDing() {
+  ensureAudio();
+  if (!audioCtx) return;
+  try {
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.frequency.setValueAtTime(880, audioCtx.currentTime);
+    o.frequency.setValueAtTime(1100, audioCtx.currentTime + 0.06);
+    g.gain.setValueAtTime(0.4, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+    o.start(audioCtx.currentTime); o.stop(audioCtx.currentTime + 0.35);
+  } catch(e) {}
+}
+
+function playError() {
+  ensureAudio();
+  if (!audioCtx) return;
+  try {
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.frequency.setValueAtTime(300, audioCtx.currentTime);
+    o.frequency.setValueAtTime(180, audioCtx.currentTime + 0.1);
+    g.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+    o.start(audioCtx.currentTime); o.stop(audioCtx.currentTime + 0.3);
+  } catch(e) {}
+}
 
 function showToast(msg) {
   const t = document.getElementById('toast');
