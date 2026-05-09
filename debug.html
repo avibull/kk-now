@@ -1,140 +1,114 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Kaidoo Scanner Debug</title>
-<style>
-  * { box-sizing:border-box; margin:0; padding:0; }
-  body { font-family:monospace; background:#000; color:#0f0; font-size:12px; }
-  #video { width:100vw; height:45vh; object-fit:cover; display:block; }
-  #canvas { display:none; }
-  #log { padding:8px; height:calc(55vh - 40px); overflow-y:auto; }
-  .log-entry { padding:4px 0; border-bottom:1px solid #1a1a1a; word-break:break-all; }
-  .log-entry.hit { color:#ff0; font-weight:bold; font-size:14px; }
-  .log-entry.info { color:#888; }
-  .log-entry.err { color:#f44; }
-  #status { background:#111; padding:8px; font-size:11px; color:#0f0; border-top:1px solid #222; height:40px; display:flex; align-items:center; }
-</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Barcode Debug</title>
+  <style>
+    body { margin:0; background:#000; color:#0f0; font-family:monospace; }
+    #video { width:100vw; height:55vh; object-fit:cover; background:#111; }
+    #status { padding:10px; background:#111; color:#0f0; font-size:13px; }
+    #log { height:35vh; overflow:auto; padding:10px; font-size:13px; }
+    .hit { color:#ff0; font-size:18px; font-weight:bold; }
+    .err { color:#f66; }
+    .info { color:#aaa; }
+  </style>
 </head>
 <body>
+
 <video id="video" playsinline autoplay muted></video>
-<canvas id="canvas"></canvas>
 <div id="status">Starting...</div>
 <div id="log"></div>
 
 <script>
-let logEl    = document.getElementById('log');
-let statusEl = document.getElementById('status');
-let frames = 0, hits = 0;
+const video = document.getElementById('video');
+const statusEl = document.getElementById('status');
+const logEl = document.getElementById('log');
 
-function log(msg, type) {
-  const d = document.createElement('div');
-  d.className = 'log-entry ' + (type||'info');
-  d.textContent = new Date().toLocaleTimeString() + ' | ' + msg;
-  logEl.insertBefore(d, logEl.firstChild);
-  while (logEl.children.length > 60) logEl.removeChild(logEl.lastChild);
+let frames = 0;
+let hits = 0;
+let reader = null;
+
+function log(msg, cls = 'info') {
+  const div = document.createElement('div');
+  div.className = cls;
+  div.textContent = new Date().toLocaleTimeString() + ' | ' + msg;
+  logEl.prepend(div);
 }
 
-function status(msg) { statusEl.textContent = msg; }
+function status(msg) {
+  statusEl.textContent = msg;
+}
 
-// ============================================================
-// APPROACH: Manual canvas polling with ZXing decode
-// Instead of decodeFromVideoElement (broken on some Android),
-// we grab canvas frames ourselves and feed to ZXing
-// ============================================================
-log('Loading ZXing...', 'info');
+function loadZxing() {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js';
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
 
-const script = document.createElement('script');
-script.src = 'https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js';
-script.onload = async () => {
-  log('ZXing loaded OK', 'info');
-  await startCamera();
-};
-script.onerror = () => {
-  log('ZXing FAILED — check internet connection', 'err');
-  status('ERROR: ZXing failed to load');
-};
-document.head.appendChild(script);
-
-async function startCamera() {
+async function start() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode:'environment', width:{ideal:1920}, height:{ideal:1080} }
-    });
-    const video = document.getElementById('video');
-    video.srcObject = stream;
-    await video.play();
+    status('Loading ZXing...');
+    await loadZxing();
+    log('ZXing loaded');
 
-    // Log actual camera resolution
-    video.addEventListener('loadedmetadata', () => {
-      log('Camera: ' + video.videoWidth + 'x' + video.videoHeight, 'info');
-    });
-
-    log('Camera started — polling canvas with ZXing', 'info');
-    status('Running | frames:0 hits:0');
-
-    // Create ZXing reader for still image decoding
     const hints = new Map();
-    // Try all formats
     hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
       ZXing.BarcodeFormat.CODE_128,
       ZXing.BarcodeFormat.CODE_39,
+      ZXing.BarcodeFormat.ITF,
       ZXing.BarcodeFormat.EAN_13,
       ZXing.BarcodeFormat.EAN_8,
-      ZXing.BarcodeFormat.QR_CODE,
-      ZXing.BarcodeFormat.DATA_MATRIX,
-      ZXing.BarcodeFormat.ITF,
-      ZXing.BarcodeFormat.CODABAR
+      ZXing.BarcodeFormat.CODABAR,
+      ZXing.BarcodeFormat.QR_CODE
     ]);
     hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
 
-    const reader = new ZXing.MultiFormatReader();
-    reader.setHints(hints);
+    reader = new ZXing.BrowserMultiFormatReader(hints, 300);
 
-    const canvas = document.getElementById('canvas');
-    const ctx    = canvas.getContext('2d', { willReadFrequently: true });
+    status('Starting camera...');
+    log('Starting camera');
 
-    // Poll every 150ms
-    setInterval(() => {
-      if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
-
-      canvas.width  = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const luminance = new ZXing.RGBLuminanceSource(imageData.data, canvas.width, canvas.height);
-      const binary    = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminance));
-
+    await reader.decodeFromVideoDevice(null, video, (result, err) => {
       frames++;
+
       if (frames % 10 === 0) {
         status('Running | frames:' + frames + ' hits:' + hits);
       }
 
-      try {
-        const result = reader.decode(binary);
-        if (result) {
-          hits++;
-          const txt = result.getText();
-          const fmt = result.getBarcodeFormat ? result.getBarcodeFormat() : '?';
-          log('✅ HIT [' + fmt + ']: ' + txt, 'hit');
-          status('HIT! frames:' + frames + ' hits:' + hits + ' | ' + txt.slice(0,20));
-        }
-      } catch(e) {
-        // NotFoundException is normal when no barcode in frame
-        // Only log unexpected errors
-        if (e && e.name !== 'NotFoundException') {
-          if (frames < 20) log('Decode err: ' + e.name + ' ' + e.message, 'err');
+      if (result) {
+        hits++;
+        const text = result.getText();
+        const format = result.getBarcodeFormat();
+        status('HIT | ' + format + ' | ' + text);
+        log('✅ HIT [' + format + ']: ' + text, 'hit');
+      }
+
+      if (err) {
+        if (
+          err.name !== 'NotFoundException' &&
+          err.name !== 'ChecksumException' &&
+          err.name !== 'FormatException'
+        ) {
+          log('Decode error: ' + err.name + ' ' + err.message, 'err');
         }
       }
-    }, 150);
+    });
 
-  } catch(e) {
-    log('Camera error: ' + e.message, 'err');
+    log('Scanner started. Point at barcode.');
+    status('Running | frames:0 hits:0');
+
+  } catch (e) {
     status('ERROR: ' + e.message);
+    log('ERROR: ' + e.message, 'err');
   }
 }
+
+start();
 </script>
+
 </body>
 </html>
