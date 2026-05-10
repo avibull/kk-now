@@ -124,7 +124,7 @@
   /* SCANNER */
   #screen-scanner { position:relative; background:#000; }
   #video { width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0; }
-  .flash-overlay { position:absolute; top:0; left:0; right:0; bottom:0; opacity:0; pointer-events:none; transition:opacity 0.05s; }
+  .flash-overlay { position:absolute; top:0; left:0; right:0; bottom:0; opacity:0; pointer-events:none; transition:opacity 0.05s; z-index:5; }
   .flash-overlay.dispatch-shipway-flash { background:rgba(240,192,64,0.2); }
   .flash-overlay.dispatch-amazon-flash  { background:rgba(255,153,0,0.2); }
   .flash-overlay.rto-shipway-flash      { background:rgba(232,112,64,0.2); }
@@ -132,7 +132,7 @@
   .flash-overlay.error-flash            { background:rgba(224,64,64,0.2); }
   .flash-overlay.active { opacity:1; }
 
-  .scanner-overlay { position:absolute; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:52px 24px 40px; pointer-events:none; }
+  .scanner-overlay { position:absolute; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:52px 24px 40px; pointer-events:none; z-index:10; }
   .scanner-top { display:flex; width:100%; align-items:center; justify-content:space-between; pointer-events:all; }
 
   .scanner-mode-pill {
@@ -463,8 +463,11 @@ function selectCourier(courier) {
 }
 
 function startScannerFromModal() {
+  // Save values before closing modal (closeCourierModal nulls pendingMode)
+  const mode    = pendingMode;
+  const courier = selectedCourier;
   closeCourierModal();
-  startScanner(pendingMode, selectedCourier);
+  startScanner(mode, courier);
 }
 
 // ============================================================
@@ -560,7 +563,7 @@ function handleRawScan(raw) {
   lastRaw = raw; lastRawTime = now;
 
   const trimmed  = raw.trim();
-  const regexKey = currentMode + '_' + currentCourier; // e.g. 'dispatch_shipway'
+  const regexKey = currentCourier + '_' + currentMode; // e.g. 'shipway_dispatch'
   const regex    = REGEX[regexKey];
 
   if (!regex || !regex.test(trimmed)) return; // silent skip
