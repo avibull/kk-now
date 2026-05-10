@@ -13,11 +13,13 @@
     --bg:#0f0f0f; --surface:#1a1a1a; --surface2:#242424; --border:#2e2e2e;
     --accent:#f0c040; --accent2:#e87040; --text:#f0f0f0; --text2:#888;
     --green:#40c070; --red:#e04040; --radius:16px;
+    --amazon:#ff9900;
   }
   body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); height:100vh; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
   .screen { display:none; flex-direction:column; height:100vh; height:100dvh; width:100%; }
   .screen.active { display:flex; }
 
+  /* LOADING */
   #screen-loading { align-items:center; justify-content:center; gap:20px; }
   .logo { font-size:28px; font-weight:700; letter-spacing:-0.5px; }
   .logo span { color:var(--accent); }
@@ -25,6 +27,7 @@
   @keyframes spin { to { transform:rotate(360deg); } }
   .loading-text { color:var(--text2); font-size:14px; }
 
+  /* WAITING / BLOCKED */
   #screen-blocked, #screen-waiting { align-items:center; justify-content:center; gap:16px; padding:40px; text-align:center; }
   .status-icon { font-size:56px; }
   .status-title { font-size:22px; font-weight:700; }
@@ -32,6 +35,7 @@
   .device-id-box { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 16px; font-family:'DM Mono',monospace; font-size:12px; color:var(--accent); word-break:break-all; max-width:300px; }
   .retry-btn { margin-top:8px; background:var(--surface2); border:1px solid var(--border); color:var(--text); font-family:'DM Sans',sans-serif; font-size:15px; padding:12px 28px; border-radius:10px; cursor:pointer; }
 
+  /* HOME */
   .home-header { padding:52px 24px 20px; border-bottom:1px solid var(--border); }
   .home-header .logo { font-size:22px; }
   .home-greeting { color:var(--text2); font-size:13px; margin-top:4px; }
@@ -49,18 +53,100 @@
   .action-btn.rto .btn-label { color:var(--accent2); }
   .btn-sub { font-size:12px; color:var(--text2); text-align:center; line-height:1.4; }
 
+  /* COURIER SELECTION MODAL */
+  .courier-modal-backdrop {
+    display:none; position:fixed; top:0; left:0; right:0; bottom:0;
+    background:rgba(0,0,0,0.85); z-index:200;
+    align-items:flex-end; justify-content:center; padding:0 0 24px;
+  }
+  .courier-modal-backdrop.open { display:flex; }
+  .courier-modal {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:24px 24px 16px 16px; width:100%; max-width:420px;
+    padding:28px 24px 24px; animation:slideUp 0.2s ease;
+  }
+  @keyframes slideUp { from{transform:translateY(40px);opacity:0;} to{transform:translateY(0);opacity:1;} }
+  .courier-modal-title {
+    font-size:13px; font-weight:600; color:var(--text2);
+    text-transform:uppercase; letter-spacing:0.8px;
+    text-align:center; margin-bottom:6px;
+  }
+  .courier-modal-mode {
+    font-size:22px; font-weight:700; text-align:center; margin-bottom:24px;
+  }
+  .courier-modal-mode.dispatch { color:var(--accent); }
+  .courier-modal-mode.rto { color:var(--accent2); }
+
+  /* Courier toggle buttons */
+  .courier-options { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:24px; }
+  .courier-option {
+    border-radius:14px; padding:20px 12px; display:flex; flex-direction:column;
+    align-items:center; gap:10px; cursor:pointer; transition:all 0.15s;
+    border:2px solid var(--border); background:var(--surface2);
+    user-select:none;
+  }
+  .courier-option.selected.shipway {
+    border-color:var(--accent);
+    background:rgba(240,192,64,0.1);
+  }
+  .courier-option.selected.amazon {
+    border-color:var(--amazon);
+    background:rgba(255,153,0,0.1);
+  }
+  .courier-option-icon { font-size:32px; line-height:1; }
+  .courier-option-name { font-size:17px; font-weight:700; }
+  .courier-option.selected.shipway .courier-option-name { color:var(--accent); }
+  .courier-option.selected.amazon .courier-option-name { color:var(--amazon); }
+  .courier-option-sub { font-size:11px; color:var(--text2); text-align:center; line-height:1.4; }
+  .courier-option .selected-tick {
+    width:22px; height:22px; border-radius:50%;
+    background:var(--border); display:flex; align-items:center; justify-content:center;
+    font-size:12px; margin-top:4px; transition:all 0.15s;
+  }
+  .courier-option.selected.shipway .selected-tick { background:var(--accent); color:#000; }
+  .courier-option.selected.amazon .selected-tick { background:var(--amazon); color:#000; }
+
+  .courier-start-btn {
+    width:100%; padding:18px; border:none; border-radius:14px;
+    font-family:'DM Sans',sans-serif; font-size:17px; font-weight:700;
+    cursor:pointer; transition:opacity 0.15s;
+  }
+  .courier-start-btn.shipway { background:var(--accent); color:#000; }
+  .courier-start-btn.amazon  { background:var(--amazon);  color:#000; }
+  .courier-start-btn:active  { opacity:0.8; }
+
+  .courier-cancel-btn {
+    width:100%; padding:12px; border:none; background:transparent;
+    color:var(--text2); font-family:'DM Sans',sans-serif; font-size:14px;
+    cursor:pointer; margin-top:8px;
+  }
+
+  /* SCANNER */
   #screen-scanner { position:relative; background:#000; }
   #video { width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0; }
   .flash-overlay { position:absolute; top:0; left:0; right:0; bottom:0; opacity:0; pointer-events:none; transition:opacity 0.05s; }
-  .flash-overlay.dispatch-flash { background:rgba(240,192,64,0.2); }
-  .flash-overlay.rto-flash { background:rgba(232,112,64,0.2); }
-  .flash-overlay.error-flash { background:rgba(224,64,64,0.2); }
+  .flash-overlay.dispatch-shipway-flash { background:rgba(240,192,64,0.2); }
+  .flash-overlay.dispatch-amazon-flash  { background:rgba(255,153,0,0.2); }
+  .flash-overlay.rto-shipway-flash      { background:rgba(232,112,64,0.2); }
+  .flash-overlay.rto-amazon-flash       { background:rgba(255,153,0,0.2); }
+  .flash-overlay.error-flash            { background:rgba(224,64,64,0.2); }
   .flash-overlay.active { opacity:1; }
+
   .scanner-overlay { position:absolute; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:52px 24px 40px; pointer-events:none; }
   .scanner-top { display:flex; width:100%; align-items:center; justify-content:space-between; pointer-events:all; }
-  .scanner-mode-pill { background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); border-radius:100px; padding:8px 18px; font-size:13px; font-weight:600; }
-  .scanner-mode-pill.dispatch { color:var(--accent); }
-  .scanner-mode-pill.rto { color:var(--accent2); }
+
+  .scanner-mode-pill {
+    background:rgba(0,0,0,0.75); backdrop-filter:blur(8px);
+    border-radius:100px; padding:8px 16px;
+    font-size:12px; font-weight:700; letter-spacing:0.5px;
+    display:flex; align-items:center; gap:6px;
+  }
+  .mode-text { }
+  .courier-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .courier-dot.shipway-dispatch { background:var(--accent); }
+  .courier-dot.shipway-rto      { background:var(--accent2); }
+  .courier-dot.amazon           { background:var(--amazon); }
+
   .scan-counter-pill { background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); border-radius:100px; padding:8px 18px; font-size:13px; font-weight:600; }
   .scan-counter-pill span { font-family:'DM Mono',monospace; font-size:16px; }
 
@@ -70,8 +156,10 @@
   .viewfinder::after  { top:0; right:0; border-width:3px 3px 0 0; border-radius:0 4px 0 0; }
   .vf-br::before { bottom:0; left:0; border-width:0 0 3px 3px; border-radius:0 0 0 4px; }
   .vf-br::after  { bottom:0; right:0; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
-  .scan-line { position:absolute; top:50%; left:4px; right:4px; height:2px; transform:translateY(-50%); background:linear-gradient(90deg,transparent,var(--accent),transparent); animation:pulse 1.5s ease-in-out infinite; }
-  .scan-line.rto { background:linear-gradient(90deg,transparent,var(--accent2),transparent); }
+  .scan-line { position:absolute; top:50%; left:4px; right:4px; height:2px; transform:translateY(-50%); animation:pulse 1.5s ease-in-out infinite; }
+  .scan-line.shipway-dispatch { background:linear-gradient(90deg,transparent,var(--accent),transparent); }
+  .scan-line.shipway-rto      { background:linear-gradient(90deg,transparent,var(--accent2),transparent); }
+  .scan-line.amazon           { background:linear-gradient(90deg,transparent,var(--amazon),transparent); }
   @keyframes pulse { 0%,100%{opacity:0.3;} 50%{opacity:1;} }
 
   .scanner-bottom { pointer-events:all; width:100%; display:flex; flex-direction:column; align-items:center; gap:12px; }
@@ -79,20 +167,26 @@
   .last-scan-pill { background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); border-radius:10px; padding:10px 16px; font-size:14px; min-height:40px; display:flex; align-items:center; gap:10px; max-width:320px; width:100%; justify-content:center; }
   .scan-num { font-family:'DM Mono',monospace; font-weight:600; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:200px; }
   .pay-badge { font-size:11px; padding:3px 10px; border-radius:100px; font-weight:600; flex-shrink:0; }
-  .pay-badge.cod { background:rgba(240,192,64,0.2); color:var(--accent); }
-  .pay-badge.prepaid { background:rgba(64,192,112,0.2); color:var(--green); }
-  .pay-badge.error { background:rgba(224,64,64,0.2); color:var(--red); }
-  .done-btn { width:100%; max-width:320px; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.15); color:#fff; font-family:'DM Sans',sans-serif; font-size:16px; font-weight:600; padding:16px; border-radius:var(--radius); cursor:pointer; }
-  .done-btn:active { background:rgba(255,255,255,0.12); }
+  .pay-badge.cod     { background:rgba(240,192,64,0.2);  color:var(--accent);  }
+  .pay-badge.prepaid { background:rgba(64,192,112,0.2);  color:var(--green);   }
+  .pay-badge.amazon  { background:rgba(255,153,0,0.15);  color:var(--amazon);  }
+  .pay-badge.error   { background:rgba(224,64,64,0.2);   color:var(--red);     }
 
+  .scanner-btn-row { display:flex; gap:12px; width:100%; max-width:320px; }
+  .pause-btn { flex:1; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.15); color:#fff; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:600; padding:16px; border-radius:var(--radius); cursor:pointer; }
+  .done-btn  { flex:2; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.15); color:#fff; font-family:'DM Sans',sans-serif; font-size:16px; font-weight:600; padding:16px; border-radius:var(--radius); cursor:pointer; }
+  .done-btn:active, .pause-btn:active { background:rgba(255,255,255,0.12); }
+
+  /* REPORT MODAL */
   .modal-backdrop { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); backdrop-filter:blur(4px); z-index:100; align-items:flex-end; justify-content:center; padding:0 0 24px; }
   .modal-backdrop.open { display:flex; }
   .modal { background:var(--surface); border:1px solid var(--border); border-radius:20px 20px 16px 16px; width:100%; max-width:420px; padding:28px 24px 24px; animation:slideUp 0.25s ease; display:flex; flex-direction:column; max-height:82vh; }
-  @keyframes slideUp { from{transform:translateY(40px);opacity:0;} to{transform:translateY(0);opacity:1;} }
-  .modal-title { font-size:18px; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:10px; flex-shrink:0; }
-  .modal-title .dot { width:10px; height:10px; border-radius:50%; background:var(--accent); flex-shrink:0; }
-  .modal-title .dot.rto { background:var(--accent2); }
-  .report-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:16px; flex-shrink:0; }
+  .modal-title { font-size:18px; font-weight:700; margin-bottom:4px; display:flex; align-items:center; gap:10px; flex-shrink:0; }
+  .modal-title .dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .modal-subtitle { font-size:12px; color:var(--text2); margin-bottom:16px; flex-shrink:0; }
+  .report-stats { display:grid; gap:8px; margin-bottom:16px; flex-shrink:0; }
+  .report-stats.four { grid-template-columns:repeat(4,1fr); }
+  .report-stats.two  { grid-template-columns:repeat(2,1fr); }
   .stat-box { background:var(--surface2); border-radius:10px; padding:12px 8px; text-align:center; }
   .stat-value { font-family:'DM Mono',monospace; font-size:26px; font-weight:600; line-height:1; }
   .stat-label { font-size:10px; color:var(--text2); margin-top:4px; text-transform:uppercase; letter-spacing:0.5px; }
@@ -101,24 +195,31 @@
   .scan-list-item { display:flex; align-items:center; justify-content:space-between; background:var(--surface2); border-radius:8px; padding:10px 14px; }
   .scan-item-num { font-family:'DM Mono',monospace; font-size:13px; font-weight:600; word-break:break-all; }
   .scan-item-badge { font-size:11px; padding:3px 10px; border-radius:100px; font-weight:600; flex-shrink:0; margin-left:8px; }
-  .scan-item-badge.cod { background:rgba(240,192,64,0.15); color:var(--accent); }
-  .scan-item-badge.prepaid { background:rgba(64,192,112,0.15); color:var(--green); }
-  .scan-item-badge.error { background:rgba(224,64,64,0.15); color:var(--red); font-size:10px; }
-  .modal-ok-btn { width:100%; background:var(--accent); color:#000; font-family:'DM Sans',sans-serif; font-size:16px; font-weight:700; padding:16px; border-radius:12px; border:none; cursor:pointer; flex-shrink:0; }
+  .scan-item-badge.cod     { background:rgba(240,192,64,0.15);  color:var(--accent); }
+  .scan-item-badge.prepaid { background:rgba(64,192,112,0.15);  color:var(--green);  }
+  .scan-item-badge.amazon  { background:rgba(255,153,0,0.12);   color:var(--amazon); }
+  .scan-item-badge.error   { background:rgba(224,64,64,0.15);   color:var(--red);    font-size:10px; }
+  .modal-ok-btn { width:100%; color:#000; font-family:'DM Sans',sans-serif; font-size:16px; font-weight:700; padding:16px; border-radius:12px; border:none; cursor:pointer; flex-shrink:0; }
   .modal-ok-btn:active { opacity:0.8; }
-  .modal-ok-btn.rto { background:var(--accent2); color:#fff; }
-  .toast { position:fixed; bottom:32px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:10px 20px; border-radius:100px; font-size:13px; opacity:0; transition:all 0.2s; z-index:200; white-space:nowrap; pointer-events:none; }
+  .modal-ok-btn.shipway-dispatch { background:var(--accent); }
+  .modal-ok-btn.shipway-rto      { background:var(--accent2); color:#fff; }
+  .modal-ok-btn.amazon-dispatch  { background:var(--amazon); }
+  .modal-ok-btn.amazon-rto       { background:var(--amazon); }
+
+  .toast { position:fixed; bottom:32px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:10px 20px; border-radius:100px; font-size:13px; opacity:0; transition:all 0.2s; z-index:300; white-space:nowrap; pointer-events:none; }
   .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
 
+<!-- LOADING -->
 <div id="screen-loading" class="screen active">
   <div class="logo">KK <span>Now</span></div>
   <div class="spinner"></div>
   <div class="loading-text">Checking device...</div>
 </div>
 
+<!-- WAITING -->
 <div id="screen-waiting" class="screen">
   <div class="status-icon">⏳</div>
   <div class="status-title">Pending Activation</div>
@@ -127,6 +228,7 @@
   <button class="retry-btn" onclick="init()">Check Again</button>
 </div>
 
+<!-- BLOCKED -->
 <div id="screen-blocked" class="screen">
   <div class="status-icon">🚫</div>
   <div class="status-title">Access Blocked</div>
@@ -134,6 +236,7 @@
   <div class="device-id-box" id="blocked-device-id"></div>
 </div>
 
+<!-- HOME -->
 <div id="screen-home" class="screen">
   <div class="home-header">
     <div class="logo">KK <span>Now</span></div>
@@ -143,12 +246,16 @@
   <div class="home-grid" id="home-grid"></div>
 </div>
 
+<!-- SCANNER -->
 <div id="screen-scanner" class="screen">
   <video id="video" playsinline autoplay muted></video>
   <div class="flash-overlay" id="flash-overlay"></div>
   <div class="scanner-overlay">
     <div class="scanner-top">
-      <div class="scanner-mode-pill" id="scanner-mode-pill">DISPATCH</div>
+      <div class="scanner-mode-pill" id="scanner-mode-pill">
+        <div class="courier-dot" id="courier-dot"></div>
+        <span class="mode-text" id="mode-text">DISPATCH · SHIPWAY</span>
+      </div>
       <div class="scan-counter-pill">Scanned: <span id="scan-count">0</span></div>
     </div>
     <div class="viewfinder">
@@ -160,21 +267,47 @@
       <div class="last-scan-pill" id="last-scan-pill">
         <span style="color:var(--text2);font-size:13px">Ready to scan</span>
       </div>
-      <div style="display:flex;gap:12px;width:100%;max-width:320px;">
-        <button class="pause-btn" id="pause-btn" onclick="togglePause()" style="flex:1;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.15);color:#fff;font-family:DM Sans,sans-serif;font-size:15px;font-weight:600;padding:16px;border-radius:16px;cursor:pointer;">⏸ Pause</button>
-        <button class="done-btn" onclick="stopScanner()" style="flex:2;">Done</button>
+      <div class="scanner-btn-row">
+        <button class="pause-btn" id="pause-btn" onclick="togglePause()">⏸ Pause</button>
+        <button class="done-btn" onclick="stopScanner()">Done</button>
       </div>
     </div>
   </div>
 </div>
 
+<!-- COURIER SELECTION MODAL -->
+<div class="courier-modal-backdrop" id="courier-modal">
+  <div class="courier-modal">
+    <div class="courier-modal-title">Select Courier</div>
+    <div class="courier-modal-mode" id="courier-modal-mode">DISPATCH</div>
+    <div class="courier-options">
+      <div class="courier-option shipway selected" id="opt-shipway" onclick="selectCourier('shipway')">
+        <div class="courier-option-icon">🚚</div>
+        <div class="courier-option-name">Shipway</div>
+        <div class="courier-option-sub">Shopify orders via Delhivery, Ekart, DTDC etc.</div>
+        <div class="selected-tick">✓</div>
+      </div>
+      <div class="courier-option amazon" id="opt-amazon" onclick="selectCourier('amazon')">
+        <div class="courier-option-icon">📦</div>
+        <div class="courier-option-name">Amazon</div>
+        <div class="courier-option-sub">Amazon Easy Ship / ATSPL orders</div>
+        <div class="selected-tick"></div>
+      </div>
+    </div>
+    <button class="courier-start-btn shipway" id="courier-start-btn" onclick="startScannerFromModal()">Start Scanning</button>
+    <button class="courier-cancel-btn" onclick="closeCourierModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- REPORT MODAL -->
 <div class="modal-backdrop" id="report-modal">
   <div class="modal">
     <div class="modal-title">
       <div class="dot" id="modal-dot"></div>
       <span id="modal-title-text">Dispatch Report</span>
     </div>
-    <div class="report-stats">
+    <div class="modal-subtitle" id="modal-subtitle">Shipway</div>
+    <div class="report-stats" id="report-stats">
       <div class="stat-box"><div class="stat-value" id="report-total" style="color:var(--accent)">0</div><div class="stat-label">Total</div></div>
       <div class="stat-box"><div class="stat-value" id="report-prepaid" style="color:var(--green)">0</div><div class="stat-label">Prepaid</div></div>
       <div class="stat-box"><div class="stat-value" id="report-cod" style="color:var(--accent)">0</div><div class="stat-label">COD</div></div>
@@ -192,9 +325,16 @@
 // ============================================================
 // CONFIG
 // ============================================================
-const BACKEND_URL      = 'https://script.google.com/macros/s/AKfycbyJvs63tDwTSc3P3ub37ZsZRDgOIYDodkR3pN5UkWjLbTWlvZtJ6W8a2JT1AvvxDIYj/exec';
-const ORDER_NUM_REGEX  = /^\d{3,6}$/;
-const AWB_REGEX        = /^[A-Za-z0-9]{8,30}$/;
+const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbyJvs63tDwTSc3P3ub37ZsZRDgOIYDodkR3pN5UkWjLbTWlvZtJ6W8a2JT1AvvxDIYj/exec';
+
+// Regex per mode
+const REGEX = {
+  shipway_dispatch: /^\d{3,6}$/,
+  shipway_rto:      /^[A-Za-z0-9]{6,30}$/,
+  amazon_dispatch:  /^[A-Za-z0-9]{6,30}$/,
+  amazon_rto:       /^[A-Za-z0-9]{6,30}$/
+};
+
 const SCAN_DEBOUNCE_MS = 2000;
 
 // ============================================================
@@ -203,21 +343,23 @@ const SCAN_DEBOUNCE_MS = 2000;
 let deviceId    = null;
 let deviceName  = '';
 let permissions = { dispatch: false, rto: false };
-let currentMode = null;
-let scanSession = [];
-let scanActive  = false;
-let scanPaused  = false;
-let videoStream = null;
-let detector    = null;
-let detecting   = false;
+let currentMode    = null;    // 'dispatch' or 'rto'
+let currentCourier = null;    // 'shipway' or 'amazon'
+let pendingMode    = null;    // mode waiting for courier selection
+let scanSession    = [];
+let scanActive     = false;
+let scanPaused     = false;
+let videoStream    = null;
+let detector       = null;
+let detecting      = false;
+let selectedCourier = 'shipway'; // in courier modal
+let audioCtx = null;
 let lastRaw = '', lastRawTime = 0;
 
 // ============================================================
 // INIT
 // ============================================================
 window.addEventListener('load', () => {
-  buildSounds();
-  // Set initial history state
   history.replaceState({ screen: 'loading' }, '', '');
   init();
 });
@@ -255,15 +397,15 @@ function buildHomeGrid() {
   grid.innerHTML = '';
   document.getElementById('home-device-label').textContent = deviceName;
   const btns = [
-    { id:'dispatch', label:'DISPATCH', sub:'Scan Order ID barcode', icon:'📦', perm:permissions.dispatch },
-    { id:'rto',      label:'RTO',      sub:'Scan AWB barcode',      icon:'↩️',  perm:permissions.rto }
+    { id:'dispatch', label:'DISPATCH', sub:'Mark orders as dispatched', icon:'📦', perm:permissions.dispatch },
+    { id:'rto',      label:'RTO',      sub:'Record returned orders',    icon:'↩️',  perm:permissions.rto }
   ];
   btns.forEach(b => {
     if (!b.perm) return;
     const el = document.createElement('div');
     el.className = 'action-btn ' + b.id;
     el.innerHTML = `<div class="btn-icon">${b.icon}</div><div class="btn-label">${b.label}</div><div class="btn-sub">${b.sub}</div>`;
-    el.addEventListener('click', () => startScanner(b.id));
+    el.addEventListener('click', () => openCourierModal(b.id));
     grid.appendChild(el);
   });
   if (!grid.children.length) {
@@ -272,31 +414,106 @@ function buildHomeGrid() {
 }
 
 // ============================================================
-// SCANNER — native BarcodeDetector at full requestAnimationFrame speed
+// COURIER SELECTION MODAL
 // ============================================================
-async function startScanner(mode) {
-  currentMode = mode;
-  scanSession = [];
-  lastRaw     = '';
-  detecting   = false;
-  scanPaused  = false;
+function openCourierModal(mode) {
+  pendingMode = mode;
+  selectedCourier = 'shipway'; // always default to shipway
+
+  const modeEl = document.getElementById('courier-modal-mode');
+  modeEl.textContent = mode === 'dispatch' ? 'DISPATCH' : 'RTO';
+  modeEl.className = 'courier-modal-mode ' + mode;
+
+  // Reset selection to shipway
+  selectCourier('shipway');
+
+  document.getElementById('courier-modal').classList.add('open');
+}
+
+function closeCourierModal() {
+  document.getElementById('courier-modal').classList.remove('open');
+  pendingMode = null;
+}
+
+function selectCourier(courier) {
+  selectedCourier = courier;
+
+  const shipwayOpt = document.getElementById('opt-shipway');
+  const amazonOpt  = document.getElementById('opt-amazon');
+  const startBtn   = document.getElementById('courier-start-btn');
+
+  // Reset both
+  shipwayOpt.classList.remove('selected');
+  amazonOpt.classList.remove('selected');
+  shipwayOpt.querySelector('.selected-tick').textContent = '';
+  amazonOpt.querySelector('.selected-tick').textContent  = '';
+
+  // Select chosen
+  if (courier === 'shipway') {
+    shipwayOpt.classList.add('selected');
+    shipwayOpt.querySelector('.selected-tick').textContent = '✓';
+    startBtn.className = 'courier-start-btn shipway';
+    startBtn.textContent = 'Start Scanning — Shipway';
+  } else {
+    amazonOpt.classList.add('selected');
+    amazonOpt.querySelector('.selected-tick').textContent = '✓';
+    startBtn.className = 'courier-start-btn amazon';
+    startBtn.textContent = 'Start Scanning — Amazon';
+  }
+}
+
+function startScannerFromModal() {
+  closeCourierModal();
+  startScanner(pendingMode, selectedCourier);
+}
+
+// ============================================================
+// SCANNER
+// ============================================================
+async function startScanner(mode, courier) {
+  currentMode    = mode;
+  currentCourier = courier;
+  scanSession    = [];
+  lastRaw        = '';
+  detecting      = false;
+  scanPaused     = false;
+
   document.getElementById('scan-count').textContent = '0';
   document.getElementById('last-scan-pill').innerHTML = '<span style="color:var(--text2);font-size:13px">Ready to scan</span>';
+  document.getElementById('pause-btn').textContent = '⏸ Pause';
+  document.getElementById('pause-btn').style.color = '#fff';
 
-  const pill = document.getElementById('scanner-mode-pill');
-  pill.textContent = mode === 'dispatch' ? 'DISPATCH' : 'RTO';
-  pill.className   = 'scanner-mode-pill ' + mode;
-  document.getElementById('scan-line').className = 'scan-line ' + mode;
-  const pauseBtn = document.getElementById('pause-btn');
-  if (pauseBtn) { pauseBtn.textContent = '⏸ Pause'; pauseBtn.style.color = '#fff'; }
-  document.getElementById('scanner-hint').textContent = mode === 'dispatch'
-    ? 'Point at the Order Id barcode (bottom)'
-    : 'Point at the AWB barcode (top)';
+  // Mode pill
+  const modeKey = mode + '-' + courier; // e.g. 'dispatch-shipway'
+  const modeLabels = {
+    'dispatch-shipway': 'DISPATCH · SHIPWAY',
+    'dispatch-amazon':  'DISPATCH · AMAZON',
+    'rto-shipway':      'RTO · SHIPWAY',
+    'rto-amazon':       'RTO · AMAZON'
+  };
+  document.getElementById('mode-text').textContent = modeLabels[modeKey];
+
+  // Dot color
+  const dot = document.getElementById('courier-dot');
+  dot.className = 'courier-dot ' + (courier === 'amazon' ? 'amazon' : (mode + '-shipway'));
+
+  // Scan line color
+  const scanLine = document.getElementById('scan-line');
+  scanLine.className = 'scan-line ' + (courier === 'amazon' ? 'amazon' : (mode + '-shipway'));
+
+  // Hint text
+  const hints = {
+    'dispatch-shipway': 'Point at the Order Id barcode (bottom barcode)',
+    'dispatch-amazon':  'Point at the AWB barcode (top barcode)',
+    'rto-shipway':      'Point at the AWB barcode (top barcode)',
+    'rto-amazon':       'Point at the AWB barcode (top barcode)'
+  };
+  document.getElementById('scanner-hint').textContent = hints[modeKey];
 
   showScreen('scanner');
 
+  // Init detector
   try {
-    // Init BarcodeDetector with all supported formats
     const supported = await BarcodeDetector.getSupportedFormats();
     detector = new BarcodeDetector({ formats: supported });
   } catch(e) {
@@ -322,67 +539,66 @@ async function startScanner(mode) {
 
 async function scanLoop() {
   if (!scanActive) return;
-
   const video = document.getElementById('video');
-  if (video.readyState === video.HAVE_ENOUGH_DATA && !detecting) {
+  if (video.readyState === video.HAVE_ENOUGH_DATA && !detecting && !scanPaused) {
     detecting = true;
     try {
       const results = await detector.detect(video);
       for (const r of results) {
         if (r.rawValue) handleRawScan(r.rawValue);
       }
-    } catch(e) { /* no barcode in frame — normal */ }
+    } catch(e) {}
     detecting = false;
   }
-
   requestAnimationFrame(scanLoop);
 }
 
-// ============================================================
-// HANDLE RAW SCAN
-// ============================================================
 function handleRawScan(raw) {
   if (!raw || !scanActive || scanPaused) return;
   const now = Date.now();
   if (raw === lastRaw && (now - lastRawTime) < SCAN_DEBOUNCE_MS) return;
   lastRaw = raw; lastRawTime = now;
 
-  const trimmed = raw.trim();
+  const trimmed  = raw.trim();
+  const regexKey = currentMode + '_' + currentCourier; // e.g. 'dispatch_shipway'
+  const regex    = REGEX[regexKey];
 
-  if (currentMode === 'dispatch') {
-    if (!ORDER_NUM_REGEX.test(trimmed)) return;
-    if (scanSession.find(s => s.scanValue === trimmed)) return;
-    processScan(trimmed);
-  } else if (currentMode === 'rto') {
-    if (!AWB_REGEX.test(trimmed)) return;
-    if (scanSession.find(s => s.scanValue === trimmed)) return;
-    processScan(trimmed);
-  }
+  if (!regex || !regex.test(trimmed)) return; // silent skip
+  if (scanSession.find(s => s.scanValue === trimmed)) return; // duplicate
+
+  processScan(trimmed);
 }
 
-// ============================================================
-// PROCESS SCAN
-// ============================================================
 async function processScan(scanValue) {
+  ensureAudio();
   const entry = { scanValue, paymentType:'...', status:'pending', error:null };
   scanSession.push(entry);
   document.getElementById('scan-count').textContent = scanSession.length;
   const today = getTodayTag();
+  const timeNow = getTimeNow();
 
-  const params = { action:'scanOrder', mode:currentMode, date:today };
-  if (currentMode === 'dispatch') params.orderNum = scanValue;
-  else                            params.awb       = scanValue;
-
+  let params, res;
   try {
-    const res = await apiCall(params);
+    if (currentCourier === 'shipway') {
+      params = { action:'scanOrder', mode:currentMode, date:today };
+      if (currentMode === 'dispatch') params.orderNum = scanValue;
+      else                            params.awb       = scanValue;
+    } else {
+      params = { action:'scanAmazon', awb:scanValue, mode:currentMode, date:today, time:timeNow };
+    }
+
+    res = await apiCall(params);
+
     if (res.error) {
       entry.status = 'error'; entry.paymentType = 'error'; entry.error = res.error;
       flash('error'); playError();
       showLastScan(scanValue, 'error', res.error);
     } else {
-      entry.status = 'success'; entry.paymentType = res.paymentType || 'Unknown';
-      flash(currentMode); playDing();
-      showLastScan(scanValue, res.paymentType, null);
+      entry.status = 'success';
+      entry.paymentType = currentCourier === 'amazon' ? 'amazon' : (res.paymentType || 'Unknown');
+      flash(currentMode + '-' + currentCourier);
+      playDing();
+      showLastScan(scanValue, entry.paymentType, null);
     }
   } catch(err) {
     entry.status = 'error'; entry.paymentType = 'error'; entry.error = 'Network error';
@@ -395,15 +611,21 @@ function showLastScan(val, paymentType, errMsg) {
   const pill = document.getElementById('last-scan-pill');
   if (errMsg) {
     pill.innerHTML = `<span class="scan-num">${val}</span><span class="pay-badge error">Not found</span>`;
+  } else if (paymentType === 'amazon') {
+    pill.innerHTML = `<span class="scan-num">${val}</span><span class="pay-badge amazon">Amazon</span>`;
   } else {
     const isCod = (paymentType||'').toLowerCase().includes('cod');
     pill.innerHTML = `<span class="scan-num">${val}</span><span class="pay-badge ${isCod?'cod':'prepaid'}">${isCod?'COD':'Prepaid'}</span>`;
   }
 }
 
-// ============================================================
-// STOP + REPORT
-// ============================================================
+function togglePause() {
+  scanPaused = !scanPaused;
+  const btn = document.getElementById('pause-btn');
+  btn.textContent = scanPaused ? '▶ Resume' : '⏸ Pause';
+  btn.style.color = scanPaused ? 'var(--accent)' : '#fff';
+}
+
 function stopScanner() {
   scanActive = false;
   detecting  = false;
@@ -411,21 +633,58 @@ function stopScanner() {
   setTimeout(showReport, 300);
 }
 
+// ============================================================
+// REPORT
+// ============================================================
 function showReport() {
   const total   = scanSession.length;
-  const prepaid = scanSession.filter(s => (s.paymentType||'').toLowerCase().includes('prepaid')).length;
-  const cod     = scanSession.filter(s => (s.paymentType||'').toLowerCase().includes('cod')).length;
   const errors  = scanSession.filter(s => s.status === 'error').length;
   const isRto   = currentMode === 'rto';
+  const isAmz   = currentCourier === 'amazon';
+  const modeKey = currentMode + '-' + currentCourier;
 
-  document.getElementById('report-total').textContent   = total;
-  document.getElementById('report-prepaid').textContent = prepaid;
-  document.getElementById('report-cod').textContent     = cod;
-  document.getElementById('report-errors').textContent  = errors;
-  document.getElementById('modal-title-text').textContent = isRto ? 'RTO Report' : 'Dispatch Report';
-  document.getElementById('modal-dot').className        = 'dot' + (isRto ? ' rto' : '');
-  document.getElementById('modal-ok-btn').className     = 'modal-ok-btn' + (isRto ? ' rto' : '');
+  document.getElementById('report-total').textContent  = total;
+  document.getElementById('report-errors').textContent = errors;
 
+  // Title + subtitle
+  document.getElementById('modal-title-text').textContent = (isRto ? 'RTO Report' : 'Dispatch Report');
+  document.getElementById('modal-subtitle').textContent   = isAmz ? 'Amazon' : 'Shipway';
+
+  // Dot color
+  const dotColors = {
+    'dispatch-shipway': 'var(--accent)',
+    'rto-shipway':      'var(--accent2)',
+    'dispatch-amazon':  'var(--amazon)',
+    'rto-amazon':       'var(--amazon)'
+  };
+  document.getElementById('modal-dot').style.background = dotColors[modeKey] || 'var(--accent)';
+
+  // Stats layout
+  const statsEl = document.getElementById('report-stats');
+  if (isAmz) {
+    // Amazon: just Total + Errors
+    statsEl.className = 'report-stats two';
+    statsEl.innerHTML = `
+      <div class="stat-box"><div class="stat-value" id="report-total" style="color:var(--amazon)">${total}</div><div class="stat-label">Total</div></div>
+      <div class="stat-box"><div class="stat-value" id="report-errors" style="color:var(--red)">${errors}</div><div class="stat-label">Errors</div></div>
+    `;
+  } else {
+    // Shipway: Total + Prepaid + COD + Errors
+    const prepaid = scanSession.filter(s => (s.paymentType||'').toLowerCase().includes('prepaid')).length;
+    const cod     = scanSession.filter(s => (s.paymentType||'').toLowerCase().includes('cod')).length;
+    statsEl.className = 'report-stats four';
+    statsEl.innerHTML = `
+      <div class="stat-box"><div class="stat-value" style="color:var(--accent)">${total}</div><div class="stat-label">Total</div></div>
+      <div class="stat-box"><div class="stat-value" style="color:var(--green)">${prepaid}</div><div class="stat-label">Prepaid</div></div>
+      <div class="stat-box"><div class="stat-value" style="color:var(--accent)">${cod}</div><div class="stat-label">COD</div></div>
+      <div class="stat-box"><div class="stat-value" style="color:var(--red)">${errors}</div><div class="stat-label">Errors</div></div>
+    `;
+  }
+
+  // OK button color
+  document.getElementById('modal-ok-btn').className = 'modal-ok-btn ' + modeKey;
+
+  // Scan list
   const list = document.getElementById('scan-list');
   list.innerHTML = '';
   if (!scanSession.length) {
@@ -433,15 +692,17 @@ function showReport() {
   } else {
     scanSession.forEach(s => {
       const isErr = s.status === 'error';
+      const isAmzItem = s.paymentType === 'amazon';
       const isCod = (s.paymentType||'').toLowerCase().includes('cod');
-      const cls   = isErr ? 'error' : (isCod ? 'cod' : 'prepaid');
-      const lbl   = isErr ? (s.error || 'Error') : (isCod ? 'COD' : 'Prepaid');
-      const el    = document.createElement('div');
+      const cls = isErr ? 'error' : (isAmzItem ? 'amazon' : (isCod ? 'cod' : 'prepaid'));
+      const lbl = isErr ? (s.error || 'Error') : (isAmzItem ? 'Amazon' : (isCod ? 'COD' : 'Prepaid'));
+      const el  = document.createElement('div');
       el.className = 'scan-list-item';
       el.innerHTML = `<span class="scan-item-num">${s.scanValue}</span><span class="scan-item-badge ${cls}">${lbl}</span>`;
       list.appendChild(el);
     });
   }
+
   document.getElementById('report-modal').classList.add('open');
 }
 
@@ -453,43 +714,23 @@ function closeReport() {
 // ============================================================
 // UTILITIES
 // ============================================================
-function togglePause() {
-  scanPaused = !scanPaused;
-  const btn = document.getElementById('pause-btn');
-  if (scanPaused) {
-    btn.textContent = '▶ Resume';
-    btn.style.color = 'var(--accent)';
-  } else {
-    btn.textContent = '⏸ Pause';
-    btn.style.color = '#fff';
-  }
-}
-
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + name).classList.add('active');
-
-  // Push history state so back button is intercepted
   if (name === 'scanner' || name === 'home') {
     history.pushState({ screen: name }, '', '');
   }
 }
 
-// Intercept Android back button
-window.addEventListener('popstate', (e) => {
-  const currentScreen = document.querySelector('.screen.active');
-  if (!currentScreen) return;
-  const id = currentScreen.id;
-
-  if (id === 'screen-scanner') {
-    // Back from scanner = stop and go home
+window.addEventListener('popstate', () => {
+  const current = document.querySelector('.screen.active');
+  if (!current) return;
+  if (current.id === 'screen-scanner') {
     stopScanner();
     history.pushState({ screen: 'home' }, '', '');
-  } else if (id === 'screen-home') {
-    // Back from home = push state again to prevent exit
+  } else if (current.id === 'screen-home') {
     history.pushState({ screen: 'home' }, '', '');
   } else {
-    // Any other screen = go home
     showScreen('home');
   }
 });
@@ -499,27 +740,26 @@ function getTodayTag() {
   return d.getDate() + '-' + (d.getMonth()+1) + '-' + String(d.getFullYear()).slice(2);
 }
 
+function getTimeNow() {
+  const now = new Date();
+  const ist = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  const h   = String(ist.getHours()).padStart(2,'0');
+  const m   = String(ist.getMinutes()).padStart(2,'0');
+  const s   = String(ist.getSeconds()).padStart(2,'0');
+  return h + ':' + m + ':' + s;
+}
+
 function flash(type) {
   const o = document.getElementById('flash-overlay');
   o.className = 'flash-overlay ' + type + '-flash active';
   setTimeout(() => o.classList.remove('active'), 150);
 }
 
-let audioCtx = null;
-
-function buildSounds() {
-  // Audio context created on first user gesture to avoid autoplay block
-}
-
 function ensureAudio() {
   if (!audioCtx) {
-    try {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    } catch(e) { audioCtx = null; }
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
   }
-  if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
 }
 
 function playDing() {
