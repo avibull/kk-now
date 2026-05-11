@@ -12,7 +12,7 @@
   :root {
     --bg:#0f0f0f; --surface:#1a1a1a; --surface2:#242424; --border:#2e2e2e;
     --accent:#f0c040; --accent2:#e87040; --text:#f0f0f0; --text2:#888;
-    --green:#40c070; --red:#e04040; --radius:16px;
+    --green:#40c070; --red:#e04040; --radius:16px; --amazon:#ff9900;
   }
   body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); height:100vh; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
   .screen { display:none; flex-direction:column; height:100vh; height:100dvh; width:100%; }
@@ -48,6 +48,12 @@
   .action-btn.dispatch .btn-label { color:var(--accent); }
   .action-btn.rto .btn-label { color:var(--accent2); }
   .btn-sub { font-size:12px; color:var(--text2); text-align:center; line-height:1.4; }
+  .action-btn.amazon-dispatch { border-color:rgba(255,153,0,0.3); }
+  .action-btn.amazon-dispatch:active { background:rgba(255,153,0,0.08); }
+  .action-btn.amazon-dispatch .btn-label { color:var(--amazon); }
+  .action-btn.amazon-rto { border-color:rgba(255,153,0,0.2); }
+  .action-btn.amazon-rto:active { background:rgba(255,153,0,0.06); }
+  .action-btn.amazon-rto .btn-label { color:var(--amazon); opacity:0.8; }
 
   #screen-scanner { position:relative; background:#000; }
   #video { width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0; }
@@ -189,14 +195,15 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const BACKEND_URL     = 'https://script.google.com/macros/s/AKfycbzjaNW6H_RkhyZbQIzd557GVdNgX0IwVBlApaqaKz3Ea488luhks03D_IU8UGTbsdpRhw/exec';
+const BACKEND_URL     = 'https://script.google.com/macros/s/AKfycbxWcPLnwAdpNBiSm5w6rS5EU4VQiQnlSCpooqYyspVNWBlERkbY9PCjMRTZsoyQAndx9g/exec';
 const ORDER_NUM_REGEX = /^\d{3,6}$/;
 const AWB_REGEX       = /^[A-Za-z0-9]{6,30}$/;
+const AMAZON_AWB_REGEX = /^[A-Za-z0-9]{6,30}$/;
 const SCAN_DEBOUNCE_MS = 2000;
 
 let deviceId    = null;
 let deviceName  = '';
-let permissions = { dispatch: false, rto: false };
+let permissions = { dispatch: false, rto: false, amazonDispatch: false, amazonRto: false };
 let currentMode = null;
 let scanSession = [];
 let scanActive  = false;
@@ -239,21 +246,28 @@ function buildHomeGrid() {
   grid.innerHTML = '';
   document.getElementById('home-device-label').textContent = deviceName;
   const btns = [
-    { id:'dispatch', label:'DISPATCH', sub:'Scan Order ID barcode', icon:'📦', perm:permissions.dispatch },
-    { id:'rto',      label:'RTO',      sub:'Scan AWB barcode',      icon:'↩️',  perm:permissions.rto }
+    { id:'dispatch',       label:'DISPATCH',        sub:'Shipway — Order ID barcode', icon:'📦', perm:permissions.dispatch },
+    { id:'rto',            label:'RTO',              sub:'Shipway — AWB barcode',      icon:'↩️',  perm:permissions.rto },
+    { id:'amazon-dispatch',label:'AMAZON DISPATCH',  sub:'Amazon — AWB barcode',       icon:'📦', perm:permissions.amazonDispatch },
+    { id:'amazon-rto',     label:'AMAZON RTO',       sub:'Amazon — AWB barcode',       icon:'↩️',  perm:permissions.amazonRto }
   ];
   btns.forEach(b => {
     if (!b.perm) return;
     const el = document.createElement('div');
     el.className = 'action-btn ' + b.id;
     el.innerHTML = `<div class="btn-icon">${b.icon}</div><div class="btn-label">${b.label}</div><div class="btn-sub">${b.sub}</div>`;
-    el.addEventListener('click', () => startScanner(b.id));
+    if (b.id === 'amazon-dispatch' || b.id === 'amazon-rto') {
+      el.addEventListener('click', () => startAmazonScanner(b.id === 'amazon-dispatch' ? 'dispatch' : 'rto'));
+    } else {
+      el.addEventListener('click', () => startScanner(b.id));
+    }
     grid.appendChild(el);
   });
   if (!grid.children.length) grid.innerHTML = '<div style="grid-column:1/-1;color:var(--text2);font-size:14px;text-align:center;padding:40px 0">No operations assigned.<br>Contact your admin.</div>';
 }
 
 async function startScanner(mode) {
+  window._isAmazon = false; window._amazonMode = null;
   currentMode = mode; scanSession = []; lastRaw = ''; detecting = false; scanPaused = false;
   document.getElementById('scan-count').textContent = '0';
   document.getElementById('last-scan-pill').innerHTML = '<span style="color:var(--text2);font-size:13px">Ready to scan</span>';
@@ -301,6 +315,16 @@ function handleRawScan(raw) {
   if (raw === lastRaw && (now - lastRawTime) < SCAN_DEBOUNCE_MS) return;
   lastRaw = raw; lastRawTime = now;
   const trimmed = raw.trim();
+
+  // Amazon path — completely separate from Shipway
+  if (window._isAmazon) {
+    if (!AMAZON_AWB_REGEX.test(trimmed)) return;
+    if (scanSession.find(s => s.scanValue === trimmed)) return;
+    processScanAmazon(trimmed);
+    return;
+  }
+
+  // Shipway path — unchanged
   if (currentMode === 'dispatch') {
     if (!ORDER_NUM_REGEX.test(trimmed)) return;
     if (scanSession.find(s => s.scanValue === trimmed)) return;
@@ -354,24 +378,45 @@ function togglePause() {
 }
 
 function stopScanner() {
+  window._lastWasAmazon = window._isAmazon || false;
+  window._lastAmazonMode = window._amazonMode;
+  window._isAmazon = false; window._amazonMode = null;
   scanActive = false; detecting = false;
   if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
   setTimeout(showReport, 300);
 }
 
 function showReport() {
-  const total   = scanSession.length;
-  const prepaid = scanSession.filter(s => (s.paymentType||'').toLowerCase().includes('prepaid')).length;
-  const cod     = scanSession.filter(s => (s.paymentType||'').toLowerCase().includes('cod')).length;
-  const errors  = scanSession.filter(s => s.status === 'error').length;
-  const isRto   = currentMode === 'rto';
-  document.getElementById('report-total').textContent   = total;
-  document.getElementById('report-prepaid').textContent = prepaid;
-  document.getElementById('report-cod').textContent     = cod;
-  document.getElementById('report-errors').textContent  = errors;
-  document.getElementById('modal-title-text').textContent = isRto ? 'RTO Report' : 'Dispatch Report';
-  document.getElementById('modal-dot').className        = 'dot' + (isRto ? ' rto' : '');
-  document.getElementById('modal-ok-btn').className     = 'modal-ok-btn' + (isRto ? ' rto' : '');
+  const total  = scanSession.length;
+  const errors = scanSession.filter(s => s.status === 'error').length;
+  const isRto  = currentMode === 'rto';
+
+  // Amazon session — simplified report
+  if (window._lastWasAmazon) {
+    document.getElementById('report-total').textContent   = total;
+    document.getElementById('report-prepaid').textContent = '—';
+    document.getElementById('report-cod').textContent     = '—';
+    document.getElementById('report-errors').textContent  = errors;
+    const modeLabel = (window._lastAmazonMode === 'rto') ? 'Amazon RTO' : 'Amazon Dispatch';
+    document.getElementById('modal-title-text').textContent = modeLabel;
+    document.getElementById('modal-dot').style.background = 'var(--amazon)';
+    document.getElementById('modal-dot').className = 'dot';
+    document.getElementById('modal-ok-btn').className = 'modal-ok-btn';
+    document.getElementById('modal-ok-btn').style.background = 'var(--amazon)';
+  } else {
+    // Shipway session
+    const prepaid = scanSession.filter(s => (s.paymentType||'').toLowerCase().includes('prepaid')).length;
+    const cod     = scanSession.filter(s => (s.paymentType||'').toLowerCase().includes('cod')).length;
+    document.getElementById('report-total').textContent   = total;
+    document.getElementById('report-prepaid').textContent = prepaid;
+    document.getElementById('report-cod').textContent     = cod;
+    document.getElementById('report-errors').textContent  = errors;
+    document.getElementById('modal-title-text').textContent = isRto ? 'RTO Report' : 'Dispatch Report';
+    document.getElementById('modal-dot').className        = 'dot' + (isRto ? ' rto' : '');
+    document.getElementById('modal-dot').style.background = '';
+    document.getElementById('modal-ok-btn').className     = 'modal-ok-btn' + (isRto ? ' rto' : '');
+    document.getElementById('modal-ok-btn').style.background = '';
+  }
   const list = document.getElementById('scan-list');
   list.innerHTML = '';
   if (!scanSession.length) {
@@ -392,6 +437,89 @@ function showReport() {
 }
 
 function closeReport() { document.getElementById('report-modal').classList.remove('open'); showScreen('home'); }
+
+// ============================================================
+// AMAZON SCANNER — separate function, does not touch Shipway code
+// ============================================================
+async function startAmazonScanner(mode) {
+  currentMode = mode; scanSession = []; lastRaw = ''; detecting = false; scanPaused = false;
+  document.getElementById('scan-count').textContent = '0';
+  document.getElementById('last-scan-pill').innerHTML = '<span style="color:var(--text2);font-size:13px">Ready to scan</span>';
+  document.getElementById('pause-btn').textContent = '⏸ Pause';
+  document.getElementById('pause-btn').style.color = '#fff';
+
+  const pill = document.getElementById('scanner-mode-pill');
+  pill.textContent = mode === 'dispatch' ? 'AMAZON DISPATCH' : 'AMAZON RTO';
+  pill.className   = 'scanner-mode-pill';
+  pill.style.color = 'var(--amazon)';
+
+  document.getElementById('scan-line').className = 'scan-line';
+  document.getElementById('scan-line').style.background = 'linear-gradient(90deg,transparent,var(--amazon),transparent)';
+  document.getElementById('scanner-hint').textContent = 'Point at the AWB barcode';
+
+  // Flag current session as Amazon
+  window._amazonMode = mode;
+  window._isAmazon   = true;
+
+  showScreen('scanner');
+
+  try {
+    const supported = await BarcodeDetector.getSupportedFormats();
+    detector = new BarcodeDetector({ formats: supported });
+  } catch(e) { showToast('Barcode scanner not supported'); showScreen('home'); return; }
+
+  try {
+    videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'environment', width:{ideal:1920}, height:{ideal:1080} } });
+    const video = document.getElementById('video');
+    video.srcObject = videoStream;
+    await video.play();
+    scanActive = true;
+    requestAnimationFrame(scanLoop);
+  } catch(err) { showToast('Camera error: ' + err.message); showScreen('home'); }
+}
+
+async function processScanAmazon(scanValue) {
+  ensureAudio();
+  const entry = { scanValue, paymentType:'amazon', status:'pending', error:null };
+  scanSession.push(entry);
+  document.getElementById('scan-count').textContent = scanSession.length;
+
+  const today   = getTodayTag();
+  const timeNow = getTimeIST();
+
+  try {
+    const res = await apiCall({
+      action: 'scanAmazon',
+      awb:    scanValue,
+      mode:   window._amazonMode,
+      date:   today,
+      time:   timeNow
+    });
+    if (res.error) {
+      entry.status = 'error'; entry.paymentType = 'error'; entry.error = res.error;
+      flash('error'); playError();
+      document.getElementById('last-scan-pill').innerHTML =
+        `<span class="scan-num">${scanValue}</span><span class="pay-badge error">Error</span>`;
+    } else {
+      entry.status = 'success';
+      flash('dispatch');
+      playDing();
+      document.getElementById('last-scan-pill').innerHTML =
+        `<span class="scan-num">${scanValue}</span><span style="font-size:11px;padding:3px 10px;border-radius:100px;font-weight:600;background:rgba(255,153,0,0.2);color:var(--amazon)">Amazon</span>`;
+    }
+  } catch(err) {
+    entry.status = 'error'; entry.paymentType = 'error'; entry.error = 'Network error';
+    flash('error'); playError();
+    document.getElementById('last-scan-pill').innerHTML =
+      `<span class="scan-num">${scanValue}</span><span class="pay-badge error">Network error</span>`;
+  }
+}
+
+function getTimeIST() {
+  const now = new Date();
+  const ist = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  return String(ist.getHours()).padStart(2,'0') + ':' + String(ist.getMinutes()).padStart(2,'0') + ':' + String(ist.getSeconds()).padStart(2,'0');
+}
 
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
